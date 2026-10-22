@@ -258,13 +258,19 @@ const DEMO = [
   "Also, do we still need legal sign-off for the pilot? Nobody knows.",
   "Co-Pilot, who owes me what?",
 ];
+let demoStop = false;
+/** Ends the demo early; the loop below checks this between sentences. */
+export function stopDemo() { demoStop = true; hush(); set({ caption: "" }); }
 export async function playDemo() {
   if (state.demo || state.listening) return;
+  demoStop = false;
   sessionId = null; chunk = ""; lastFlush = Date.now();
   set({ demo: true, listening: true, listeningSince: new Date().toISOString(), error: "" });
   if (settings.consent) { feed("copilot", CONSENT_LINE); await say(CONSENT_LINE); }
   for (const line of DEMO) {
-    for (let i = 1; i <= line.length; i += 3) { set({ caption: line.slice(0, i) }); await new Promise(r => setTimeout(r, 35)); }
+    if (demoStop) break;
+    for (let i = 1; i <= line.length && !demoStop; i += 3) { set({ caption: line.slice(0, i) }); await new Promise(r => setTimeout(r, 35)); }
+    if (demoStop) break;
     set({ caption: "" });
     hearSentence(line);
     await new Promise(r => setTimeout(r, 400));

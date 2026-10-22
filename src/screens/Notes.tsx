@@ -31,6 +31,7 @@ export function Notes({ capture }: { capture: () => void }) {
                       {!!c.people.length && <Faces names={c.people} max={4} size={22} />}
                     </span>
                   </span>
+                  <span className={"chev" + (open ? " open" : "")} aria-hidden="true"><Icon name="arrow" size={18} /></span>
                 </button>
                 {open && (
                   <div className="note-body">

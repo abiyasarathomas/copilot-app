@@ -12,7 +12,7 @@ const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w
 export function Avatar({ name, size = 32, title }: { name: string | null | undefined; size?: number; title?: string }) {
   const me = isMe(name);
   return (
-    <span className={"av" + (me ? " me" : " p-" + colorFor(name!))} style={{ width: size, height: size, fontSize: Math.round(size * (me ? 0.3 : 0.4)) }}
+    <span className={"av" + (me ? " me" : " g-" + colorFor(name!))} style={{ width: size, height: size, fontSize: Math.round(size * (me ? 0.3 : 0.4)) }}
       title={title ?? (me ? "You" : name!)} role="img" aria-label={title ?? (me ? "You" : name!)}>
       {me ? "You" : initials(name!)}
     </span>

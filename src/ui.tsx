@@ -98,8 +98,8 @@ export function GapCard({ g }: { g: GapRef }) {
         <span className="gap-issue">{g.issue}</span>
         {g.ask && <span className="gap-ask"><Icon name="arrow" size={14} /> {g.ask}</span>}
       </div>
-      <button className="icon-btn small" aria-label={"Mark sorted: " + g.issue} title="Sorted" onClick={() => { store.setGapDone(g.cid, g.id, true); toast("Marked sorted", () => store.setGapDone(g.cid, g.id, false)); }}>
-        <Icon name="check" size={18} />
+      <button className="btn small ghost" aria-label={"Mark sorted: " + g.issue} onClick={() => { store.setGapDone(g.cid, g.id, true); toast("Marked sorted", () => store.setGapDone(g.cid, g.id, false)); }}>
+        <Icon name="check" size={16} /> Sorted
       </button>
     </li>
   );

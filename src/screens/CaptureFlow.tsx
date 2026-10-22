@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import { api, type BriefResult, type Image } from "../api";
-import { fmtDue } from "../format";
 import { Icon } from "../icons";
 import { canCaptureScreen, canListen, captureScreen, listen } from "../native";
 import { allTodos, newId, store, todayISO, useCaptures } from "../store";
 import { Sheet, toast } from "../ui";
+import { Due, Flow } from "../visual";
 
 const SOURCES = [
   ["Meeting", "Meeting"], ["Conversation", "In-person chat"], ["Call", "Call"],
@@ -125,12 +125,11 @@ export function CaptureFlow({ example, onClose, onSaved }: { example?: boolean; 
                   <input type="checkbox" checked={!skip.has(i)} onChange={() => setSkip(s => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; })} />
                   <span>
                     <span className="todo-task">{t.task}</span>
-                    {t.quote && <q className="said">{t.quote}</q>}
+                    {t.quote && <q className="said"><Icon name="quote" size={12} />{t.quote}</q>}
                     <span className="meta">
-                      {t.owner ? <span>{t.owner}{t.to ? ` → ${t.to}` : ""}</span> : <span className="warn">No owner</span>}
-                      {t.due ? <span>Due {fmtDue(t.due)}</span> : <span className="warn">No date</span>}
-                      <span>{t.group}</span>
-                      <span className={"pri " + t.priority}>{t.priority}</span>
+                      {t.owner ? <Flow from={t.owner} to={t.to ?? null} /> : <span className="pill warm"><Icon name="user" size={13} /> ?</span>}
+                      <Due due={t.due} />
+                      <span className={"pill pri-" + t.priority}>{t.priority}</span>
                     </span>
                   </span>
                 </label>
@@ -139,7 +138,7 @@ export function CaptureFlow({ example, onClose, onSaved }: { example?: boolean; 
           </div>
           {!!result.gaps.length && <div>
             <h4>Missing pieces</h4>
-            <ul className="gaps">{result.gaps.map((g, i) => <li key={i} className="gap"><span className="gap-issue">{g.issue}</span>{g.ask && <span className="gap-ask">Next step: {g.ask}</span>}</li>)}</ul>
+            <ul className="gaps">{result.gaps.map((g, i) => <li key={i} className="gap"><span className="gap-issue">{g.issue}</span>{g.ask && <span className="gap-ask"><Icon name="arrow" size={14} /> {g.ask}</span>}</li>)}</ul>
           </div>}
         </div>
       </Sheet>
