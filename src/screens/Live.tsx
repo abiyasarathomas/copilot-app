@@ -3,6 +3,7 @@ import { briefMe, CONSENT_LINE, hush, playDemo, startListening, startWatching, s
 import { Icon, type IconName } from "../icons";
 import { canCaptureScreen, canListen, canSpeak } from "../native";
 import { CopyBox } from "../ui";
+import { Poster } from "../poster";
 
 const KIND: Record<FeedItem["kind"], { icon: IconName; label: string }> = {
   todo: { icon: "check", label: "Promise" },
@@ -27,25 +28,22 @@ export function Live() {
 
   return (
     <div className="page live">
-      <div className="page-head">
-        <p className="eyebrow">{status}{a.listening && !a.demo ? ` · ${mins} min` : ""}{a.busy === "reading" ? " · picking things up" : ""}</p>
-        <h1>{a.listening || a.watching ? "I'm on it." : "Ready when you are."}</h1>
-      </div>
+      <Poster color={a.busy === "speaking" ? "lime" : a.awaiting ? "saffron" : a.listening || a.watching ? "cobalt" : "fog"} live={a.listening || a.watching || !!a.busy} seed={11}
+        kicker="Co-Pilot / Live" aside={<>{status}{a.listening && !a.demo ? ` · ${mins} min` : ""}{a.busy === "reading" ? " · writing it down" : ""}</>}
+        rank={a.listening ? "On air" : a.watching ? "Watching" : "Standby"}
+        title={<h1>{a.awaiting ? "Go ahead." : a.busy === "speaking" ? "Speaking." : a.listening || a.watching ? "Listening." : "Ready when you are."}</h1>}
+        caption={<p className="caption" aria-live="polite">
+          {a.caption ? <>“{a.caption}”</> : a.listening ? <>Say <b>“Co-Pilot”</b> and your question any time.</>
+            : canListen ? "Turn on listening in a meeting. I'll keep track of who promised what, decisions and open questions." : "I keep track of who promised what, so you don't have to."}
+        </p>}>
+        <button className={"orb" + (a.listening ? " on" : "")} aria-pressed={a.listening} disabled={a.demo}
+          onClick={() => (a.listening ? stopListening() : canListen ? startListening() : playDemo())}>
+          <Icon name={a.listening ? "stop" : "mic"} size={22} />
+          <span>{a.demo ? "Demo playing" : a.listening ? "Stop listening" : canListen ? "Start listening" : "Play a demo meeting"}</span>
+        </button>
+      </Poster>
 
       <section className="deck">
-        <button className={"orb" + (a.listening ? " on" : "") + (a.awaiting ? " ask" : "") + (a.busy === "speaking" ? " talk" : "")}
-          aria-pressed={a.listening} disabled={a.demo}
-          onClick={() => (a.listening ? stopListening() : canListen ? startListening() : playDemo())}>
-          <span className="ring" aria-hidden="true" /><span className="ring r2" aria-hidden="true" />
-          <Icon name={a.listening ? "stop" : "mic"} size={34} />
-          <span className="orb-label">{a.demo ? "Demo playing" : a.listening ? "Stop listening" : canListen ? "Listen" : "Play demo"}</span>
-        </button>
-
-        <p className="caption" aria-live="polite">
-          {a.caption ? <>“{a.caption}”</> : a.listening ? <>Say <b>“Co-Pilot”</b> and your question any time.</>
-            : canListen ? "Turn on listening in a meeting. I'll keep track of who promised what, decisions and open questions." : " "}
-        </p>
-
         <div className="actions">
           <button className="btn ghost" onClick={talkOnce} disabled={!canListen || a.demo || a.busy === "thinking"}><Icon name="chat" size={18} /> Talk to me</button>
           <button className="btn ghost" onClick={briefMe} disabled={a.busy === "thinking"}><Icon name="sound" size={18} /> Brief me</button>
@@ -59,13 +57,7 @@ export function Live() {
         {a.error && <p className="err" role="alert">{a.error}</p>}
       </section>
 
-      {!canListen && (
-        <section className="card notice">
-          <h2>See it work</h2>
-          <p className="muted">This test page can't use your microphone or screen. Play a short demo meeting: Co-Pilot hears it, keeps track of who promised what, then answers “who owes me what?” out loud.</p>
-          <button className="btn primary" disabled={a.demo} onClick={playDemo}><Icon name="spark" size={18} /> {a.demo ? "Playing…" : "Play a demo meeting"}</button>
-        </section>
-      )}
+      {!canListen && <p className="muted small center">This test page can't use your microphone or screen, so the demo plays a short meeting through the same steps: Co-Pilot hears it, writes down who promised what, then answers “who owes me what?” out loud.</p>}
 
       <section className="feed-wrap">
         <div className="card-head"><h2>Picked up</h2>{canListen && !a.listening && <button className="link" onClick={playDemo}>Play a demo</button>}</div>

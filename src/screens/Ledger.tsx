@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { briefPerson, useAssistant } from "../assistant";
-import { whenBucket } from "../format";
+import { fmtDue, whenBucket } from "../format";
+import { colorFor, Poster } from "../poster";
 import { Icon } from "../icons";
 import { allGaps, allTodos, counterpart, flags, sideOf, store, useCaptures, type Side } from "../store";
 import type { TodoRef } from "../types";
@@ -73,26 +74,24 @@ export function Ledger({ initial, listen }: { initial?: string; listen: () => vo
             <button className="icon-btn filled" aria-label="Add promise" disabled={!task.trim()}><Icon name="plus" /></button>
           </form>
 
-          {names.length ? names.map(n => {
+          {names.length ? names.map((n, i) => {
             const items = order(groups[n]), live = items.filter(t => !t.done), overdue = late(items);
+            const all = todos.filter(t => sideOf(t) === tab && (counterpart(t) ?? NOBODY) === n);
+            const next = live.find(t => t.due);
             return (
               <section className="person" key={n}>
-                <header className="person-head">
-                  <span className="avatar" aria-hidden="true">{n === NOBODY ? "?" : n.slice(0, 1)}</span>
-                  <div className="person-name">
-                    <h3>{n}</h3>
-                    <span className="meta">
-                      <span>{tab === "owe" ? `You owe ${live.length}` : `Owes you ${live.length}`}</span>
-                      {!!overdue && <span className="warn">{overdue} overdue</span>}
-                    </span>
-                  </div>
+                <Poster color={n === NOBODY ? "fog" : colorFor(n)} seed={i + 5} label={n}
+                  kicker={tab === "owe" ? "You owe" : "Owes you"} aside={overdue ? `${overdue} overdue` : next ? `Next due ${fmtDue(next.due!)}` : live.length ? "No dates yet" : "All kept"}
+                  rank={`No.${String(i + 1).padStart(2, "0")}`} title={<h2 className="poster-name">{n}</h2>}
+                  tag={live[0]?.task.toLowerCase() ?? "nothing open"}
+                  figureLabel="Open promises" figure={live.length} bar={all.length ? all.filter(t => t.done).length / all.length : 0}>
                   {n !== NOBODY && !!live.length && (
-                    <div className="row">
-                      <button className="icon-btn" disabled={a.busy === "speaking"} onClick={() => briefPerson(n)} aria-label={`Brief me before meeting ${n}`} title="Before you meet"><Icon name="sound" /></button>
-                      <button className="btn small ghost" onClick={() => setDraft({ person: n, side: tab, items: live })}><Icon name="send" size={14} /> {tab === "owed" ? "Nudge" : "Update"}</button>
+                    <div className="row poster-actions">
+                      <button className="btn primary small" onClick={() => setDraft({ person: n, side: tab, items: live })}><Icon name="send" size={14} /> {tab === "owed" ? `Nudge ${n}` : `Update ${n}`}</button>
+                      <button className="btn ghost small" disabled={a.busy === "speaking"} onClick={() => briefPerson(n)}><Icon name="sound" size={14} /> Before you meet</button>
                     </div>
                   )}
-                </header>
+                </Poster>
                 <div className="todo-list card flush">{items.map(t => <TodoRow key={t.cid + t.id} t={t} showOwner={false} />)}</div>
               </section>
             );

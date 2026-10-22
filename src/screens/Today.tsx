@@ -5,6 +5,7 @@ import { Icon } from "../icons";
 import { canSpeak, speak } from "../native";
 import { briefPerson } from "../assistant";
 import { allGaps, allTodos, counterpart, flags, isMine, store, todayISO, useCaptures } from "../store";
+import { Poster } from "../poster";
 import { GapCard, TodoRow, toast } from "../ui";
 
 type Focus = { at: string; order: { key: string; why: string; text: string; kind: string }[] };
@@ -59,7 +60,7 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
 
   const head = (
     <div className="page-head">
-      <p className="eyebrow">Pre-flight · {new Date().toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</p>
+      <p className="eyebrow">Briefing · {new Date().toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</p>
       <h1>{greeting()}</h1>
     </div>
   );
@@ -113,33 +114,26 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
         </section>
       )}
 
-      <div className="stats">
-        {stats.map(s => (
-          <button key={s.label} className={"stat" + ("hot" in s && s.hot ? " hot" : "") + ("alarm" in s && s.alarm ? " alarm" : "")} onClick={() => go("todos", s.to)}>
-            <span className="stat-n">{s.n}</span><span className="stat-l">{s.label}</span>
-          </button>
+      <div className="poster-grid">
+        {stats.map((st, i) => (
+          <Poster key={st.label} color={(["cobalt", "lime", "coral", "saffron"] as const)[i]} seed={i + 2} onClick={() => go("todos", st.to)} label={`${st.n} ${st.label}`}
+            kicker={st.label} figure={st.n} />
         ))}
       </div>
 
-      <section className="card brief">
-        <div className="card-head">
-          <div><p className="card-label">Flight plan · 60 seconds</p><h2>Morning brief</h2></div>
-          <div className="row">
-            {day && canSpeak && <button className="icon-btn" onClick={() => speak(day.text)} aria-label="Read the brief aloud"><Icon name="sound" /></button>}
-            {day && <button className="btn small ghost" disabled={dayBusy} onClick={writeDay}>{dayBusy ? "Updating…" : "Refresh"}</button>}
-          </div>
+      <Poster color="fog" seed={9} kicker="Morning brief" aside="60 seconds" label="Morning brief"
+        title={day ? undefined : <h2>What's due, what's late, and who owes you.</h2>}>
+        {day ? <p className="brief-text">{day.text}</p> : null}
+        <div className="row">
+          {day && canSpeak && <button className="btn primary" onClick={() => speak(day.text)}><Icon name="sound" size={18} /> Read it to me</button>}
+          {day ? <button className="btn ghost" disabled={dayBusy} onClick={writeDay}>{dayBusy ? "Updating…" : "Refresh"}</button>
+            : <button className="btn primary" disabled={dayBusy} onClick={writeDay}><Icon name="spark" /> {dayBusy ? "Writing…" : "Write today's brief"}</button>}
         </div>
-        {day ? <p className="brief-text">{day.text}</p> : (
-          <>
-            <p className="muted">What's due, what's late, and who owes you, in under a minute.</p>
-            <button className="btn primary" disabled={dayBusy} onClick={writeDay}><Icon name="spark" /> {dayBusy ? "Writing…" : "Write today's brief"}</button>
-          </>
-        )}
-      </section>
+      </Poster>
 
       <section className="card">
         <div className="card-head">
-          <div><p className="card-label">Sequence</p><h2>Focus next</h2></div>
+          <div><p className="card-label">Next up</p><h2>Focus next</h2></div>
           <button className="btn small ghost" disabled={prioBusy || !live.size} onClick={prioritize}>{prioBusy ? "Ranking…" : focus ? "Re-rank" : "Rank for me"}</button>
         </div>
         {focus?.order.length ? (
