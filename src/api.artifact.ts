@@ -2,11 +2,11 @@
 // artifact's built-in `sample` capability, so no server or API key is needed.
 // Swapped in for ./api.ts by `npm run build:test` (see vite.config.ts).
 import type Anthropic from "@anthropic-ai/sdk";
-import { briefPrompt, CHAT_SYSTEM, dayPrompt, prioritizePrompt, TOOL_DEFS } from "../shared/prompts";
-import type { BriefInput, BriefResult, Image } from "./api";
-import { runTool } from "./tools";
+import { briefPrompt, CHAT_SYSTEM, dayPrompt, draftPrompt, prioritizePrompt, TOOL_DEFS } from "../shared/prompts";
+import type { BriefInput, BriefResult, DraftInput, Image } from "./api";
+import { runTool, type Log } from "./tools";
 
-export type { BriefInput, BriefResult, Image } from "./api";
+export type { BriefInput, BriefResult, DraftInput, Image } from "./api";
 export const accessCode = { get: () => "", set: (_: string) => {} };
 
 type Sample = ((input: unknown, opts?: Record<string, unknown>) => Promise<{ text: string }>) & {
@@ -32,7 +32,7 @@ async function ask<T>(fn: (s: Sample) => Promise<T>): Promise<T> {
 
 const toBlob = (img: Image) => new Blob([Uint8Array.from(atob(img.data), c => c.charCodeAt(0))], { type: img.media_type });
 
-const BRIEF_SHAPE = `Return ONLY JSON: {"title": string, "summary": string, "decisions": [string], "people": [string], "todos": [{"task": string, "owner": string|null, "due": "YYYY-MM-DD"|null, "group": string, "priority": "high"|"medium"|"low"}], "gaps": [{"issue": string, "ask": string}]}`;
+const BRIEF_SHAPE = `Return ONLY JSON: {"title": string, "summary": string, "decisions": [string], "people": [string], "todos": [{"task": string, "owner": string|null, "to": string|null, "quote": string|null, "due": "YYYY-MM-DD"|null, "group": string, "priority": "high"|"medium"|"low"}], "gaps": [{"issue": string, "ask": string}]}`;
 
 export const api = {
   brief: (b: BriefInput) => ask(async s => {
@@ -41,19 +41,20 @@ export const api = {
     return {
       title: String(r.title || b.source), summary: String(r.summary || ""),
       decisions: (r.decisions || []).map(String), people: (r.people || []).map(String),
-      todos: (r.todos || []).map(t => ({ task: String(t.task), owner: t.owner || null, due: t.due || null, group: t.group || "General",
+      todos: (r.todos || []).map(t => ({ task: String(t.task), owner: t.owner || null, to: t.to || null, quote: t.quote || null, due: t.due || null, group: t.group || "General",
         priority: ["high", "medium", "low"].includes(t.priority) ? t.priority : "medium" as const })),
       gaps: (r.gaps || []).map(g => ({ issue: String(g.issue), ask: String(g.ask || "") })),
     };
   }),
   day: (b: { now: string; recent: unknown[]; todos: unknown[]; gaps: unknown[] }) =>
     ask(async s => (await s(dayPrompt(b), { modelTier: "default", cache: false })).text.trim()),
+  draft: (b: DraftInput) => ask(async s => (await s(draftPrompt(b), { modelTier: "default", cache: false })).text.trim()),
   prioritize: (b: { now: string; items: { key: string; [k: string]: unknown }[] }) =>
     ask(async s => {
       const r = await s.json<{ order?: { key: string; why: string }[] }>(prioritizePrompt(b) + '\nReturn ONLY JSON: {"order":[{"key": string, "why": string}]}', { modelTier: "default" });
       return { order: (r.order || []).map(o => ({ key: String(o.key), why: String(o.why || "") })) };
     }),
-  chat: (b: { now: string; messages: Anthropic.Beta.BetaMessageParam[] }, log: (t: string) => void = () => {}) =>
+  chat: (b: { now: string; messages: Anthropic.Beta.BetaMessageParam[] }, log: Log = () => {}) =>
     ask(async s => {
       // The artifact runs the whole tool loop itself, so send plain text turns only.
       const turns = b.messages.flatMap(m => {

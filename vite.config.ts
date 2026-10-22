@@ -9,7 +9,7 @@ function devApi(): Plugin {
     name: "copilot-dev-api",
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        const m = req.url?.match(/^\/api\/(brief|day|prioritize|chat)$/);
+        const m = req.url?.match(/^\/api\/(brief|day|prioritize|chat|draft)$/);
         if (!m) return next();
         const mod = await server.ssrLoadModule(`/api/${m[1]}.ts`);
         const handler = req.method === "OPTIONS" ? mod.OPTIONS : mod.POST;

@@ -85,7 +85,7 @@ export function CaptureFlow({ example, onClose, onSaved }: { example?: boolean; 
       todos: todos.map(t => ({ ...t, id: newId("t"), group: t.group || "General", done: false })),
       gaps: result.gaps.map(g => ({ ...g, id: newId("g"), done: false })),
     });
-    toast(`Saved ${todos.length} to-do${todos.length === 1 ? "" : "s"} from ${result.title || source}`);
+    toast(`Saved ${todos.length} promise${todos.length === 1 ? "" : "s"} from ${result.title || source}`);
     onSaved();
   };
 
@@ -108,7 +108,7 @@ export function CaptureFlow({ example, onClose, onSaved }: { example?: boolean; 
     return (
       <Sheet title="Review" onClose={onClose} footer={<>
         <button className="btn ghost" onClick={() => setStep("input")}><Icon name="back" size={16} /> Edit notes</button>
-        <button className="btn primary" onClick={save}>Save {kept} to-do{kept === 1 ? "" : "s"}</button>
+        <button className="btn primary" onClick={save}>Save {kept} promise{kept === 1 ? "" : "s"}</button>
       </>}>
         <div className="review">
           <div>
@@ -118,15 +118,16 @@ export function CaptureFlow({ example, onClose, onSaved }: { example?: boolean; 
           </div>
           {!!result.decisions.length && <div><h4>Decisions</h4><ul className="plain">{result.decisions.map((d, i) => <li key={i}>{d}</li>)}</ul></div>}
           <div>
-            <h4>To-dos <span className="muted">· untick any you don't want</span></h4>
+            <h4>Promises <span className="muted">· untick any you don't want</span></h4>
             {result.todos.length ? <ul className="pick">{result.todos.map((t, i) => (
               <li key={i}>
                 <label>
                   <input type="checkbox" checked={!skip.has(i)} onChange={() => setSkip(s => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; })} />
                   <span>
                     <span className="todo-task">{t.task}</span>
+                    {t.quote && <q className="said">{t.quote}</q>}
                     <span className="meta">
-                      {t.owner ? <span>{t.owner}</span> : <span className="warn">No owner</span>}
+                      {t.owner ? <span>{t.owner}{t.to ? ` → ${t.to}` : ""}</span> : <span className="warn">No owner</span>}
                       {t.due ? <span>Due {fmtDue(t.due)}</span> : <span className="warn">No date</span>}
                       <span>{t.group}</span>
                       <span className={"pri " + t.priority}>{t.priority}</span>
@@ -134,7 +135,7 @@ export function CaptureFlow({ example, onClose, onSaved }: { example?: boolean; 
                   </span>
                 </label>
               </li>
-            ))}</ul> : <p className="muted">No to-dos found.</p>}
+            ))}</ul> : <p className="muted">No promises found.</p>}
           </div>
           {!!result.gaps.length && <div>
             <h4>Missing pieces</h4>

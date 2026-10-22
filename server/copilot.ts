@@ -2,7 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
-import { briefPrompt, CHAT_SYSTEM, dayPrompt, prioritizePrompt, TOOL_DEFS } from "../shared/prompts.js";
+import { briefPrompt, CHAT_SYSTEM, dayPrompt, draftPrompt, prioritizePrompt, TOOL_DEFS } from "../shared/prompts.js";
 
 const client = new Anthropic(); // reads ANTHROPIC_API_KEY from the environment
 const MODEL = "claude-opus-5-5";
@@ -27,6 +27,8 @@ const Brief = z.object({
   todos: z.array(z.object({
     task: z.string(),
     owner: z.string().nullable(),
+    to: z.string().nullable(),
+    quote: z.string().nullable(),
     due: z.string().nullable(),
     group: z.string(),
     priority: z.enum(["high", "medium", "low"]),
@@ -86,6 +88,26 @@ export async function day(input: z.infer<typeof DayInput>): Promise<string> {
       role: "user",
       content: dayPrompt(input),
     }],
+    ...FALLBACK,
+  });
+  refused(res.stop_reason);
+  return res.content.flatMap(b => (b.type === "text" ? [b.text] : [])).join("").trim();
+}
+
+/* ---------- follow-up draft ---------- */
+export const DraftInput = z.object({
+  now: z.string(),
+  person: z.string().max(100),
+  direction: z.enum(["owe", "owed"]),
+  items: z.array(z.unknown()).min(1).max(30),
+});
+
+export async function draft(input: z.infer<typeof DraftInput>): Promise<string> {
+  const res = await client.beta.messages.create({
+    model: MODEL,
+    max_tokens: 2000,
+    output_config: { effort: "low" },
+    messages: [{ role: "user", content: draftPrompt(input) }],
     ...FALLBACK,
   });
   refused(res.stop_reason);

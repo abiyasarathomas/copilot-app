@@ -58,6 +58,23 @@ export const allTodos = (cs: Capture[]): TodoRef[] => cs.flatMap(c => c.todos.ma
 export const allGaps = (cs: Capture[]): GapRef[] => cs.flatMap(c => c.gaps.map(g => ({ ...g, cid: c.id, from: c.title })));
 export const isMine = (owner: string | null) => !owner || /^me$/i.test(owner);
 
+/* ---------- the promise ledger ---------- */
+export type Side = "owe" | "owed";
+const isMe = (v?: string | null) => !!v && /^(me|i|myself)$/i.test(v.trim());
+const tidy = (v: string) => v.trim().replace(/^\w/, c => c.toUpperCase());
+/** "owe": I promised it. "owed": someone promised it (to me, usually). */
+export const sideOf = (t: Todo): Side => (isMine(t.owner) ? "owe" : "owed");
+/** The other person in the promise, or null if nobody is named. */
+export function counterpart(t: Todo): string | null {
+  if (!isMine(t.owner)) return tidy(t.owner!);
+  return t.to && !isMe(t.to) ? tidy(t.to) : null;
+}
+/** What is missing for this promise to be kept. */
+export function flags(t: Todo): string[] {
+  return [!t.owner && "No owner", !t.due && "No date", sideOf(t) === "owe" && !counterpart(t) && "For whom?"].filter(Boolean) as string[];
+}
+export const samePerson = (a: string | null, b: string) => !!a && a.toLowerCase().split(/\s+/)[0] === b.toLowerCase().split(/\s+/)[0];
+
 export function todayISO() {
   const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 10);

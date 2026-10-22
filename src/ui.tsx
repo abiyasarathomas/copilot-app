@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { fmtDue, fmtTime, localInput, whenBucket } from "./format";
 import { Icon } from "./icons";
-import { store } from "./store";
+import { counterpart, flags, sideOf, store } from "./store";
 import type { GapRef, TodoRef } from "./types";
 
 /* ---------- toasts ---------- */
@@ -64,9 +64,11 @@ export function TodoRow({ t, showGroup = true, showOwner = true }: { t: TodoRef;
       </button>
       <div className="todo-main">
         <div className="todo-task">{t.task}</div>
+        {t.quote && <q className="said">{t.quote}</q>}
         <div className="meta">
-          {showOwner && (t.owner ? <span>{t.owner}</span> : <span className="warn">No owner</span>)}
-          {t.due ? <span className={b === "Overdue" || b === "Today" ? "warn" : ""}>Due {fmtDue(t.due)}</span> : <span className="warn">No date</span>}
+          {showOwner && t.owner && <span>{sideOf(t) === "owed" ? `${counterpart(t)} owes you` : counterpart(t) ? `You owe ${counterpart(t)}` : "On you"}</span>}
+          {t.due && <span className={b === "Overdue" || b === "Today" ? "warn" : ""}>Due {fmtDue(t.due)}</span>}
+          {flags(t).map(f => <span key={f} className="warn">{f}</span>)}
           {showGroup && <span>{t.group}</span>}
           {t.remindAt && <span className="accent"><Icon name="bell" size={12} /> {fmtTime(t.remindAt)}</span>}
         </div>
@@ -97,6 +99,30 @@ export function GapCard({ g }: { g: GapRef }) {
         <Icon name="check" size={14} /> Sorted
       </button>
     </li>
+  );
+}
+
+/* ---------- a drafted message to copy ---------- */
+export async function copyText(text: string) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    // Older browsers and some embedded pages block the clipboard API.
+    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand("copy"); ta.remove(); return ok;
+  }
+}
+export function CopyBox({ text, onChange, onRewrite, busy }: { text: string; onChange?: (v: string) => void; onRewrite?: () => void; busy?: boolean }) {
+  const copy = async () => toast(await copyText(text) ? "Copied. Paste it wherever you talk." : "Couldn't copy. Select the text and copy it.");
+  return (
+    <div className="copybox">
+      {onChange ? <><label className="sr" htmlFor="draft-text">Draft</label><textarea id="draft-text" value={text} onChange={e => onChange(e.target.value)} rows={6} /></>
+        : <p className="copy-text">{text}</p>}
+      <div className="row">
+        <button className="btn primary small" onClick={copy} disabled={!text}><Icon name="copy" size={14} /> Copy</button>
+        {onRewrite && <button className="btn ghost small" onClick={onRewrite} disabled={busy}>{busy ? "Rewriting…" : "Rewrite"}</button>}
+      </div>
+    </div>
   );
 }
 

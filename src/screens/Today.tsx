@@ -3,7 +3,8 @@ import { api } from "../api";
 import { fmtTime, greeting, read, whenBucket, write } from "../format";
 import { Icon } from "../icons";
 import { canSpeak, speak } from "../native";
-import { allGaps, allTodos, isMine, store, todayISO, useCaptures } from "../store";
+import { briefPerson } from "../assistant";
+import { allGaps, allTodos, counterpart, flags, isMine, store, todayISO, useCaptures } from "../store";
 import { GapCard, TodoRow, toast } from "../ui";
 
 type Focus = { at: string; order: { key: string; why: string; text: string; kind: string }[] };
@@ -16,6 +17,9 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
   const openGaps = gaps.filter(g => !g.done);
   const overdue = open.filter(t => whenBucket(t.due) === "Overdue");
   const due = open.filter(t => t.remindAt && +new Date(t.remindAt) <= now);
+  const tally: Record<string, number> = {};
+  open.forEach(t => { const p = counterpart(t); if (p) tally[p] = (tally[p] || 0) + 1; });
+  const people = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const soon = open.filter(t => ["Overdue", "Today"].includes(whenBucket(t.due))).slice(0, 4);
 
   const [day, setDay] = useState<Day | null>(() => { const d = read<Day | null>("copilot.day", null); return d?.date === todayISO() ? d : null; });
@@ -29,7 +33,7 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
       const text = await api.day({
         now: new Date().toString(),
         recent: captures.slice(0, 8).map(c => ({ title: c.title, source: c.source, summary: c.summary, decisions: c.decisions })),
-        todos: open.map(({ task, owner, due, group, priority }) => ({ task, owner, due, group, priority })),
+        todos: open.map(t => ({ task: t.task, owner: t.owner, to: t.to ?? null, due: t.due, priority: t.priority, missing: flags(t) })),
         gaps: openGaps.map(({ issue, ask, from }) => ({ issue, ask, from })),
       });
       const d = { date: todayISO(), text }; setDay(d); write("copilot.day", d);
@@ -68,8 +72,8 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
           <h2>Your briefing builds itself</h2>
           <ol className="steps">
             <li><b>Turn on listening</b> in a meeting or conversation, or let Co-Pilot watch your screen.</li>
-            <li><b>Co-Pilot picks up</b> to-dos, decisions and missing pieces on its own.</li>
-            <li><b>Ask "Brief me"</b> and it reads your day out loud.</li>
+            <li><b>Co-Pilot keeps track</b> of who promised what, decisions and open questions, on its own.</li>
+            <li><b>Ask "Brief me"</b> for a 60-second morning brief, or "what do I owe Sam?"</li>
           </ol>
           <div className="row">
             <button className="btn primary" onClick={() => go("live")}><Icon name="mic" /> Start listening</button>
@@ -82,10 +86,10 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
 
   const live = new Set([...open.map(t => "t|" + t.cid + "|" + t.id), ...openGaps.map(g => "g|" + g.cid + "|" + g.id)]);
   const stats = [
-    { n: mine.length, label: "On me", to: "mine" },
-    { n: open.length - mine.length, label: "Waiting on others", to: "others" },
-    { n: overdue.length, label: "Overdue", to: "when", alarm: overdue.length > 0 },
-    { n: openGaps.length, label: "Missing", to: "gaps", hot: openGaps.length > 0 },
+    { n: mine.length, label: "I owe", to: "owe" },
+    { n: open.length - mine.length, label: "Owed to me", to: "owed" },
+    { n: overdue.length, label: "Overdue", to: "owe", alarm: overdue.length > 0 },
+    { n: openGaps.length + open.filter(t => flags(t).length).length, label: "Missing", to: "missing", hot: openGaps.length > 0 },
   ];
 
   return (
@@ -119,7 +123,7 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
 
       <section className="card brief">
         <div className="card-head">
-          <div><p className="card-label">Flight plan</p><h2>Today's brief</h2></div>
+          <div><p className="card-label">Flight plan · 60 seconds</p><h2>Morning brief</h2></div>
           <div className="row">
             {day && canSpeak && <button className="icon-btn" onClick={() => speak(day.text)} aria-label="Read the brief aloud"><Icon name="sound" /></button>}
             {day && <button className="btn small ghost" disabled={dayBusy} onClick={writeDay}>{dayBusy ? "Updating…" : "Refresh"}</button>}
@@ -127,7 +131,7 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
         </div>
         {day ? <p className="brief-text">{day.text}</p> : (
           <>
-            <p className="muted">A short plan from your open to-dos and missing pieces.</p>
+            <p className="muted">What's due, what's late, and who owes you, in under a minute.</p>
             <button className="btn primary" disabled={dayBusy} onClick={writeDay}><Icon name="spark" /> {dayBusy ? "Writing…" : "Write today's brief"}</button>
           </>
         )}
@@ -151,15 +155,23 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
         ) : <p className="muted">Co-Pilot can put your tasks and missing pieces in the order to tackle them.</p>}
       </section>
 
+      {!!people.length && (
+        <section className="card">
+          <div className="card-head"><div><p className="card-label">Pre-meeting</p><h2>Seeing someone soon?</h2></div></div>
+          <p className="muted small">Tap a name to hear what you owe each other.</p>
+          <div className="chips">{people.map(([n, c]) => <button key={n} className="chip" onClick={() => briefPerson(n)}><Icon name="sound" size={14} /> {n} <span className="count">{c}</span></button>)}</div>
+        </section>
+      )}
+
       {!!soon.length && (
         <section className="card">
-          <div className="card-head"><h2>Due today or overdue</h2><button className="link" onClick={() => go("todos", "when")}>All to-dos <Icon name="arrow" size={14} /></button></div>
+          <div className="card-head"><h2>Due today or overdue</h2><button className="link" onClick={() => go("todos", "owe")}>All promises <Icon name="arrow" size={14} /></button></div>
           <div className="todo-list">{soon.map(t => <TodoRow key={t.cid + t.id} t={t} />)}</div>
         </section>
       )}
 
       <section className="card">
-        <div className="card-head"><h2>Missing pieces</h2>{openGaps.length > 3 && <button className="link" onClick={() => go("todos", "gaps")}>See all {openGaps.length} <Icon name="arrow" size={14} /></button>}</div>
+        <div className="card-head"><h2>Missing pieces</h2>{openGaps.length > 3 && <button className="link" onClick={() => go("todos", "missing")}>See all {openGaps.length} <Icon name="arrow" size={14} /></button>}</div>
         {openGaps.length ? <ul className="gaps">{openGaps.slice(0, 3).map(g => <GapCard key={g.cid + g.id} g={g} />)}</ul>
           : <p className="muted">Nothing to chase. Tasks with no owner, no date or an open question will show up here.</p>}
       </section>

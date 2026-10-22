@@ -7,7 +7,7 @@ import { Live } from "./screens/Live";
 import { CaptureFlow } from "./screens/CaptureFlow";
 import { Notes } from "./screens/Notes";
 import { Today } from "./screens/Today";
-import { Todos } from "./screens/Todos";
+import { Ledger } from "./screens/Ledger";
 import { allTodos, useCaptures } from "./store";
 import { Sheet, Toasts } from "./ui";
 
@@ -15,7 +15,7 @@ type Tab = "live" | "today" | "todos" | "notes";
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: "live", label: "Co-Pilot", icon: "mic" },
   { id: "today", label: "Briefing", icon: "home" },
-  { id: "todos", label: "To-dos", icon: "list" },
+  { id: "todos", label: "Promises", icon: "list" },
   { id: "notes", label: "History", icon: "notes" },
 ];
 const isTab = (h: string): h is Tab => TABS.some(t => t.id === h);
@@ -61,7 +61,7 @@ export function App() {
         <button className="icon-btn settings-corner" onClick={() => setSettings(true)} aria-label="Settings"><Icon name="settings" /></button>
         {tab === "live" && <Live />}
         {tab === "today" && <Today go={go} capture={openCapture} now={now} />}
-        {tab === "todos" && <Todos initial={todosView} capture={() => go("live")} />}
+        {tab === "todos" && <Ledger initial={todosView} listen={() => go("live")} />}
         {tab === "notes" && <Notes capture={() => openCapture()} />}
       </main>
 
@@ -77,6 +77,7 @@ function Settings({ onClose }: { onClose: () => void }) {
   const [notif, setNotif] = useState("");
   const [speakOn, setSpeakOn] = useState(voice.speakReplies);
   const [announce, setAnnounce] = useState(voice.announce);
+  const [consent, setConsent] = useState(voice.consent);
   return (
     <Sheet title="Settings" onClose={onClose}>
       <div className="settings">
@@ -84,6 +85,7 @@ function Settings({ onClose }: { onClose: () => void }) {
           <h4>Voice</h4>
           <label className="toggle-row"><input type="checkbox" checked={speakOn} onChange={e => { setSpeakOn(e.target.checked); voice.speakReplies = e.target.checked; }} /> Answer out loud when I type a question</label>
           <label className="toggle-row"><input type="checkbox" checked={announce} onChange={e => { setAnnounce(e.target.checked); voice.announce = e.target.checked; }} /> Tell me out loud when you pick something up</label>
+          <label className="toggle-row"><input type="checkbox" checked={consent} onChange={e => { setConsent(e.target.checked); voice.consent = e.target.checked; }} /> Say a consent line out loud when I start listening</label>
           <p className="muted small">Spoken questions ("Co-Pilot, …" or Talk to me) are always answered out loud.</p>
         </section>
         <section>
@@ -103,7 +105,7 @@ function Settings({ onClose }: { onClose: () => void }) {
         )}
         <section>
           <h4>Your data</h4>
-          <p className="muted">Notes and to-dos are saved on this device only.{!isNative && !isTest && " Install Co-Pilot from your browser menu (Install app, or Add to Home Screen) to open it like an app."}</p>
+          <p className="muted">Audio is never saved: Co-Pilot keeps only the promises, decisions and questions it writes down. Your screen is read only when you ask. Everything is saved on this device only.{!isNative && !isTest && " Install Co-Pilot from your browser menu (Install app, or Add to Home Screen) to open it like an app."}</p>
         </section>
       </div>
     </Sheet>

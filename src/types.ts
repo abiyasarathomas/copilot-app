@@ -3,7 +3,9 @@ export type Priority = "high" | "medium" | "low";
 export interface Todo {
   id: string;
   task: string;
-  owner: string | null;
+  owner: string | null; // who has to do it: "me", a name, or null (nobody took it)
+  to?: string | null;    // who it is owed to
+  quote?: string | null; // the words it came from
   due: string | null; // YYYY-MM-DD
   group: string;
   priority: Priority;

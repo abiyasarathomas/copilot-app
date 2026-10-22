@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { briefMe, hush, playDemo, startListening, startWatching, stopListening, stopWatching, talkOnce, useAssistant, type FeedItem } from "../assistant";
+import { briefMe, CONSENT_LINE, hush, playDemo, startListening, startWatching, stopListening, stopWatching, talkOnce, useAssistant, type FeedItem } from "../assistant";
 import { Icon, type IconName } from "../icons";
 import { canCaptureScreen, canListen, canSpeak } from "../native";
+import { CopyBox } from "../ui";
 
 const KIND: Record<FeedItem["kind"], { icon: IconName; label: string }> = {
-  todo: { icon: "check", label: "To-do" },
+  todo: { icon: "check", label: "Promise" },
+  draft: { icon: "send", label: "Draft" },
   gap: { icon: "alert", label: "Missing" },
   decision: { icon: "flag", label: "Decided" },
   you: { icon: "mic", label: "You" },
@@ -41,7 +43,7 @@ export function Live() {
 
         <p className="caption" aria-live="polite">
           {a.caption ? <>“{a.caption}”</> : a.listening ? <>Say <b>“Co-Pilot”</b> and your question any time.</>
-            : canListen ? "Turn on listening in a meeting or conversation. I'll pick up tasks, decisions and gaps on my own." : " "}
+            : canListen ? "Turn on listening in a meeting. I'll keep track of who promised what, decisions and open questions." : " "}
         </p>
 
         <div className="actions">
@@ -60,7 +62,7 @@ export function Live() {
       {!canListen && (
         <section className="card notice">
           <h2>See it work</h2>
-          <p className="muted">This test page can't use your microphone or screen. Play a short demo meeting: Co-Pilot hears it, picks up the work on its own, then answers a spoken question out loud.</p>
+          <p className="muted">This test page can't use your microphone or screen. Play a short demo meeting: Co-Pilot hears it, keeps track of who promised what, then answers “who owes me what?” out loud.</p>
           <button className="btn primary" disabled={a.demo} onClick={playDemo}><Icon name="spark" size={18} /> {a.demo ? "Playing…" : "Play a demo meeting"}</button>
         </section>
       )}
@@ -74,7 +76,7 @@ export function Live() {
                 <span className="feed-icon"><Icon name={KIND[f.kind].icon} size={16} /></span>
                 <div className="feed-body">
                   <span className="feed-meta">{KIND[f.kind].label}{f.via ? ` · ${f.via === "screen" ? "on screen" : "heard"}` : ""} · {clock(f.at)}</span>
-                  <span className="feed-text">{f.text}</span>
+                  {f.kind === "draft" ? <>{f.who && <span className="feed-text">To {f.who}</span>}<CopyBox text={f.text} /></> : <span className="feed-text">{f.text}</span>}
                 </div>
               </li>
             ))}
@@ -82,7 +84,7 @@ export function Live() {
         ) : <p className="muted">Nothing yet. What I hear and see shows up here as it happens.</p>}
       </section>
 
-      {(a.listening || a.watching) && <p className="tiny center">Let people know Co-Pilot is listening.</p>}
+      {(a.listening || a.watching) && <p className="consent"><Icon name="alert" size={14} /> Let people know: “{CONSENT_LINE}”</p>}
     </div>
   );
 }
