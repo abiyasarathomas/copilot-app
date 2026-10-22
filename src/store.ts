@@ -27,6 +27,15 @@ export const store = {
     return cap;
   },
   remove(id: string) { save(captures.filter(c => c.id !== id)); },
+  append(cid: string, add: Pick<Capture, "todos" | "gaps" | "decisions" | "people"> & { summary?: string; title?: string }) {
+    save(captures.map(c => c.id !== cid ? c : {
+      ...c,
+      title: c.title || add.title || c.source,
+      summary: [c.summary, add.summary].filter(Boolean).join(" "),
+      todos: [...c.todos, ...add.todos], gaps: [...c.gaps, ...add.gaps],
+      decisions: [...c.decisions, ...add.decisions], people: [...new Set([...c.people, ...add.people])],
+    }));
+  },
   restore(c: Capture) { save([c, ...captures.filter(x => x.id !== c.id)]); },
   setTodo(cid: string, id: string, patch: Partial<Todo>) {
     save(captures.map(c => c.id !== cid ? c : { ...c, todos: c.todos.map(t => t.id === id ? { ...t, ...patch } : t) }));

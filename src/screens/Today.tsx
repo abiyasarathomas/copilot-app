@@ -9,7 +9,7 @@ import { GapCard, TodoRow, toast } from "../ui";
 type Focus = { at: string; order: { key: string; why: string; text: string; kind: string }[] };
 type Day = { date: string; text: string };
 
-export function Today({ go, capture, now }: { go: (tab: "todos" | "ask", view?: string) => void; capture: (example?: boolean) => void; now: number }) {
+export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?: string) => void; capture: (example?: boolean) => void; now: number }) {
   const captures = useCaptures();
   const todos = allTodos(captures), gaps = allGaps(captures);
   const open = todos.filter(t => !t.done), mine = open.filter(t => isMine(t.owner));
@@ -65,15 +65,15 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "ask", view?: 
       <div className="page">
         {head}
         <section className="card onboard">
-          <h2>Let's set up your first brief</h2>
+          <h2>Your briefing builds itself</h2>
           <ol className="steps">
-            <li><b>Capture</b> a meeting, a hallway chat, notes or a screenshot.</li>
-            <li><b>Review</b> the to-dos and missing pieces Co-Pilot finds.</li>
-            <li><b>Start each day</b> here with a short plan.</li>
+            <li><b>Turn on listening</b> in a meeting or conversation, or let Co-Pilot watch your screen.</li>
+            <li><b>Co-Pilot picks up</b> to-dos, decisions and missing pieces on its own.</li>
+            <li><b>Ask "Brief me"</b> and it reads your day out loud.</li>
           </ol>
           <div className="row">
-            <button className="btn primary" onClick={() => capture()}><Icon name="plus" /> Capture something</button>
-            <button className="btn ghost" onClick={() => capture(true)}>Try an example</button>
+            <button className="btn primary" onClick={() => go("live")}><Icon name="mic" /> Start listening</button>
+            <button className="btn ghost" onClick={() => capture()}>Add notes instead</button>
           </div>
         </section>
       </div>

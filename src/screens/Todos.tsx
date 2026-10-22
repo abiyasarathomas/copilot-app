@@ -83,8 +83,8 @@ export function Todos({ initial, capture }: { initial?: string; capture: () => v
                 <div className="todo-list card flush">{items.map(t => <TodoRow key={t.cid + t.id} t={t} showGroup={view !== "topic"} showOwner={view !== "person"} />)}</div>
               </section>
             );
-          }) : <Empty icon="list" title={who === "all" ? "No to-dos yet" : "Nothing here"} action={<button className="btn primary" onClick={capture}><Icon name="plus" /> Capture a meeting</button>}>
-            Capture a meeting or chat and its to-dos appear here, grouped for you.
+          }) : <Empty icon="list" title={who === "all" ? "No to-dos yet" : "Nothing here"} action={<button className="btn primary" onClick={capture}><Icon name="mic" /> Start listening</button>}>
+            Turn on listening in a meeting and the to-dos Co-Pilot hears show up here.
           </Empty>}
 
           <label className="toggle-row"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show finished</label>

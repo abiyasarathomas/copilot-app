@@ -30,10 +30,11 @@ export interface BriefResult {
   todos: { task: string; owner: string | null; due: string | null; group: string; priority: "high" | "medium" | "low" }[];
   gaps: { issue: string; ask: string }[];
 }
+export type BriefInput = { text: string; source: string; today: string; existingGroups: string[]; images: Image[]; existingTasks?: string[]; live?: boolean };
 export type Image = { media_type: "image/png" | "image/jpeg" | "image/webp" | "image/gif"; data: string };
 
 export const api = {
-  brief: (b: { text: string; source: string; today: string; existingGroups: string[]; images: Image[] }) => post<BriefResult>("brief", b),
+  brief: (b: BriefInput) => post<BriefResult>("brief", b),
   day: (b: { now: string; recent: unknown[]; todos: unknown[]; gaps: unknown[] }) => post<string>("day", b),
   prioritize: (b: { now: string; items: { key: string; [k: string]: unknown }[] }) => post<{ order: { key: string; why: string }[] }>("prioritize", b),
   // `log` is only used by the in-Claude test build, which runs the tools itself.

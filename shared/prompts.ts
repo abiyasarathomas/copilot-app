@@ -1,13 +1,14 @@
 // Prompts and tool definitions shared by the server and the in-Claude test build.
 
-export function briefPrompt(i: { text: string; source: string; today: string; existingGroups: string[]; imageCount: number }) {
+export function briefPrompt(i: { text: string; source: string; today: string; existingGroups: string[]; imageCount: number; existingTasks?: string[]; live?: boolean }) {
   const shots = i.imageCount
     ? `\n${i.imageCount} screenshot(s) of the user's screen are attached. Read what they're working on (open documents, tickets, chats, calendar, email) and pull out tasks, deadlines and anything left unanswered.`
     : "";
   return `You are Co-Pilot, a work assistant. Today is ${i.today}. The user is "me" in the notes.
 Source type: ${i.source}.${shots}
 Turn the notes below into a structured brief: a short title (max 8 words), a 1-2 sentence summary, decisions, people mentioned, to-dos and gaps.
-Rules: include tasks for everyone, not just me; owner is "me", a person's name, or null. Resolve relative dates ("Friday", "next week") against today as YYYY-MM-DD, else null. Group is a short topic/project label; reuse one of these when it fits: ${JSON.stringify(i.existingGroups)}. Gaps are what is missing or unclear (no owner, no date, vague commitment, open question, unconfirmed dependency), each with one concrete ask to close it. Be thorough with gaps.
+Rules: include tasks for everyone, not just me; owner is "me", a person's name, or null. Resolve relative dates ("Friday", "next week") against today as YYYY-MM-DD, else null. Group is a short topic/project label; reuse one of these when it fits: ${JSON.stringify(i.existingGroups)}. Gaps are what is missing or unclear (no owner, no date, vague commitment, open question, unconfirmed dependency), each with one concrete ask to close it. Be thorough with gaps.${i.live ? `
+This is one part of a live session that Co-Pilot is ${i.imageCount ? "watching on the user's screen" : "hearing as it happens"}, so it may be partial, messy speech-to-text or start mid-sentence. Only pick up real work items; ignore small talk. Do not repeat anything already known: ${JSON.stringify((i.existingTasks ?? []).slice(0, 80))}. Empty lists are fine.` : ""}
 
 NOTES:
 """${i.text || "(no text, use the screenshots)"}"""`;

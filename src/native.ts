@@ -39,7 +39,7 @@ export function stopSpeaking() {
 
 /* ---------- listening (mic) ---------- */
 type WebSR = { new (): { lang: string; interimResults: boolean; continuous: boolean; start(): void; stop(): void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null } };
+  onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null } };
 const WebSpeech = (window as unknown as { SpeechRecognition?: WebSR; webkitSpeechRecognition?: WebSR }).SpeechRecognition
   || (window as unknown as { webkitSpeechRecognition?: WebSR }).webkitSpeechRecognition;
 
@@ -68,6 +68,45 @@ export async function listen(onText: (t: string) => void, opts: { continuous?: b
   });
   rec.start();
   return { stop: () => rec.stop(), done };
+}
+
+/** Always-on listening: calls onFinal with each finished sentence and onInterim with words
+ *  still being heard. Restarts itself when the browser or phone stops it. */
+export function startEar(onFinal: (t: string) => void, onInterim: (t: string) => void, onError: (msg: string) => void): () => void {
+  let active = true;
+  if (isNative) {
+    (async () => {
+      const perm = await SpeechRecognition.requestPermissions();
+      if (perm.speechRecognition !== "granted") { onError("Microphone permission was not given."); return; }
+      while (active) {
+        const r = await SpeechRecognition.start({ language: lang, partialResults: false, popup: false }).catch(() => ({ matches: [] as string[] }));
+        const t = r.matches?.[0]?.trim();
+        if (active && t) onFinal(t);
+      }
+    })();
+    return () => { active = false; SpeechRecognition.stop().catch(() => {}); };
+  }
+  if (!WebSpeech) { onError("This browser can't listen. Try Chrome, Edge or Safari."); return () => {}; }
+  let rec: InstanceType<WebSR> | null = null;
+  const boot = () => {
+    rec = new WebSpeech();
+    rec.lang = lang; rec.interimResults = true; rec.continuous = true;
+    rec.onresult = e => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) { const t = r[0].transcript.trim(); if (t) onFinal(t); } else interim += r[0].transcript;
+      }
+      onInterim(interim.trim());
+    };
+    rec.onerror = e => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") { active = false; onError("Microphone blocked. Allow it in your browser's site settings."); }
+    };
+    rec.onend = () => { if (active) setTimeout(() => active && boot(), 250); };
+    try { rec.start(); } catch { /* already started */ }
+  };
+  boot();
+  return () => { active = false; rec?.stop(); };
 }
 
 /* ---------- reminders ---------- */
@@ -106,6 +145,38 @@ export function webNotify(due: TodoRef[]) {
     shown.add(k);
     new Notification("Co-Pilot reminder", { body: t.task, tag: k });
   }
+}
+
+/* ---------- screen watching (desktop browsers) ---------- */
+/** Shares a screen or window and calls onFrame with a snapshot whenever it has changed
+ *  noticeably, checking every `everyMs`. Returns a stop function. */
+export async function watchScreen(onFrame: (img: { media_type: "image/jpeg"; data: string }) => void, onEnd: () => void, everyMs = 30000): Promise<() => void> {
+  const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+  const video = document.createElement("video");
+  video.srcObject = stream; video.muted = true; await video.play();
+  let last: Uint8ClampedArray | null = null;
+  const tiny = document.createElement("canvas"); tiny.width = 64; tiny.height = 36;
+  const check = () => {
+    if (!video.videoWidth) return;
+    const t = tiny.getContext("2d", { willReadFrequently: true })!;
+    t.drawImage(video, 0, 0, 64, 36);
+    const px = t.getImageData(0, 0, 64, 36).data;
+    let diff = 0;
+    if (last) for (let i = 0; i < px.length; i += 4) diff += Math.abs(px[i] - last[i]) + Math.abs(px[i + 1] - last[i + 1]) + Math.abs(px[i + 2] - last[i + 2]);
+    const changed = !last || diff / (64 * 36 * 3 * 255) > 0.04;
+    if (!changed) return;
+    last = px;
+    const scale = Math.min(1, 1600 / video.videoWidth);
+    const c = document.createElement("canvas");
+    c.width = Math.round(video.videoWidth * scale); c.height = Math.round(video.videoHeight * scale);
+    c.getContext("2d")!.drawImage(video, 0, 0, c.width, c.height);
+    onFrame({ media_type: "image/jpeg", data: c.toDataURL("image/jpeg", 0.8).split(",")[1] });
+  };
+  const first = setTimeout(check, 1000);
+  const timer = setInterval(check, everyMs);
+  const stop = () => { clearTimeout(first); clearInterval(timer); stream.getTracks().forEach(t => t.stop()); };
+  stream.getVideoTracks()[0].addEventListener("ended", () => { stop(); onEnd(); });
+  return stop;
 }
 
 /* ---------- screen capture (desktop browsers) ---------- */

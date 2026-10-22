@@ -23,6 +23,7 @@ const P: Record<string, ReactNode> = {
   check: <path d="M20 6 9 17l-5-5" />,
   trash: <><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15" /></>,
   arrow: <path d="m9 18 6-6-6-6" />,
+  flag: <><path d="M4 22V4" /><path d="M4 4h12l-2 4 2 4H4" /></>,
 };
 
 export type IconName = keyof typeof P;

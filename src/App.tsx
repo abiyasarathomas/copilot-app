@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { accessCode } from "./api";
 import { Icon, type IconName } from "./icons";
 import { enableReminders, isNative, syncReminders, webNotify } from "./native";
-import { Ask } from "./screens/Ask";
+import { settings as voice, stopListening } from "./assistant";
+import { Live } from "./screens/Live";
 import { CaptureFlow } from "./screens/CaptureFlow";
 import { Notes } from "./screens/Notes";
 import { Today } from "./screens/Today";
@@ -10,19 +11,19 @@ import { Todos } from "./screens/Todos";
 import { allTodos, useCaptures } from "./store";
 import { Sheet, Toasts } from "./ui";
 
-type Tab = "today" | "todos" | "ask" | "notes";
+type Tab = "live" | "today" | "todos" | "notes";
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
-  { id: "today", label: "Today", icon: "home" },
+  { id: "live", label: "Co-Pilot", icon: "mic" },
+  { id: "today", label: "Briefing", icon: "home" },
   { id: "todos", label: "To-dos", icon: "list" },
-  { id: "ask", label: "Ask", icon: "chat" },
-  { id: "notes", label: "Notes", icon: "notes" },
+  { id: "notes", label: "History", icon: "notes" },
 ];
 const isTab = (h: string): h is Tab => TABS.some(t => t.id === h);
 const isTest = import.meta.env.MODE === "artifact";
 
 export function App() {
   const captures = useCaptures();
-  const [tab, setTab] = useState<Tab>(() => { const h = location.hash.slice(1); return isTab(h) ? h : "today"; });
+  const [tab, setTab] = useState<Tab>(() => { const h = location.hash.slice(1); return isTab(h) ? h : "live"; });
   const [todosView, setTodosView] = useState<string | undefined>();
   const [capture, setCapture] = useState<null | { example: boolean }>(null);
   const [settings, setSettings] = useState(false);
@@ -47,11 +48,10 @@ export function App() {
     <div className="app">
       <nav className="nav" aria-label="Main">
         <div className="brand"><span className="logo" aria-hidden="true" /> Co-Pilot{isTest && <span className="tag">Test</span>}</div>
-        <button className="capture-btn" onClick={() => openCapture()}><Icon name="plus" /> <span>New capture</span></button>
         {TABS.map((t, i) => (
-          <button key={t.id} className="tab" style={{ "--o": i < 2 ? i + 1 : i + 2 } as React.CSSProperties} aria-current={tab === t.id ? "page" : undefined} onClick={() => go(t.id)}>
+          <button key={t.id} className="tab" style={{ "--o": i + 1 } as React.CSSProperties} aria-current={tab === t.id ? "page" : undefined} onClick={() => go(t.id)}>
             <Icon name={t.icon} /><span>{t.label}</span>
-            {t.id === "today" && due.length > 0 && <span className="badge" aria-label={`${due.length} reminders due`}>{due.length}</span>}
+            {t.id === "live" && due.length > 0 && <span className="badge" aria-label={`${due.length} reminders due`}>{due.length}</span>}
           </button>
         ))}
         <button className="tab settings-tab" onClick={() => setSettings(true)}><Icon name="settings" /><span>Settings</span></button>
@@ -59,9 +59,9 @@ export function App() {
 
       <main className="main">
         <button className="icon-btn settings-corner" onClick={() => setSettings(true)} aria-label="Settings"><Icon name="settings" /></button>
+        {tab === "live" && <Live />}
         {tab === "today" && <Today go={go} capture={openCapture} now={now} />}
-        {tab === "todos" && <Todos initial={todosView} capture={() => openCapture()} />}
-        {tab === "ask" && <Ask />}
+        {tab === "todos" && <Todos initial={todosView} capture={() => go("live")} />}
         {tab === "notes" && <Notes capture={() => openCapture()} />}
       </main>
 
@@ -75,9 +75,17 @@ export function App() {
 function Settings({ onClose }: { onClose: () => void }) {
   const [code, setCode] = useState(accessCode.get());
   const [notif, setNotif] = useState("");
+  const [speakOn, setSpeakOn] = useState(voice.speakReplies);
+  const [announce, setAnnounce] = useState(voice.announce);
   return (
     <Sheet title="Settings" onClose={onClose}>
       <div className="settings">
+        <section>
+          <h4>Voice</h4>
+          <label className="toggle-row"><input type="checkbox" checked={speakOn} onChange={e => { setSpeakOn(e.target.checked); voice.speakReplies = e.target.checked; }} /> Answer out loud when I type a question</label>
+          <label className="toggle-row"><input type="checkbox" checked={announce} onChange={e => { setAnnounce(e.target.checked); voice.announce = e.target.checked; }} /> Tell me out loud when you pick something up</label>
+          <p className="muted small">Spoken questions ("Co-Pilot, …" or Talk to me) are always answered out loud.</p>
+        </section>
         <section>
           <h4>Reminders</h4>
           <p className="muted">{isNative ? "Get a notification when a reminder is due, even when Co-Pilot is closed." : "Get a notification when a reminder is due while Co-Pilot is open."}</p>

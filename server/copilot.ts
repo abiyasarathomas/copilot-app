@@ -40,6 +40,8 @@ export const BriefInput = z.object({
   source: z.string().max(40),
   today: z.string(),
   existingGroups: z.array(z.string()).max(50),
+  existingTasks: z.array(z.string()).max(200).optional(),
+  live: z.boolean().optional(),
   images: z.array(z.object({
     media_type: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
     data: z.string(),

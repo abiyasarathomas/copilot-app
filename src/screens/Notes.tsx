@@ -9,7 +9,8 @@ export function Notes({ capture }: { capture: () => void }) {
   const [openId, setOpenId] = useState<string | null>(null);
   return (
     <div className="page">
-      <div className="page-head"><h1>Notes</h1><p className="muted">Everything you've captured, newest first. Saved on this device.</p></div>
+      <div className="page-head"><h1>History</h1><p className="muted">Every conversation, screen session and note Co-Pilot has picked up, newest first. Saved on this device.</p></div>
+      <button className="btn ghost self-start" onClick={capture}><Icon name="file" size={18} /> Add notes or a file</button>
       {captures.length ? (
         <ul className="notes">
           {captures.map(c => {
@@ -36,8 +37,8 @@ export function Notes({ capture }: { capture: () => void }) {
             );
           })}
         </ul>
-      ) : <Empty icon="notes" title="No notes yet" action={<button className="btn primary" onClick={capture}><Icon name="plus" /> Capture something</button>}>
-        Each meeting, chat or note you capture is kept here with its summary and decisions.
+      ) : <Empty icon="notes" title="Nothing yet">
+        Each conversation Co-Pilot hears is kept here with its summary and decisions.
       </Empty>}
     </div>
   );

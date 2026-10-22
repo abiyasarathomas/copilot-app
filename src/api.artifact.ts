@@ -3,10 +3,10 @@
 // Swapped in for ./api.ts by `npm run build:test` (see vite.config.ts).
 import type Anthropic from "@anthropic-ai/sdk";
 import { briefPrompt, CHAT_SYSTEM, dayPrompt, prioritizePrompt, TOOL_DEFS } from "../shared/prompts";
-import type { BriefResult, Image } from "./api";
+import type { BriefInput, BriefResult, Image } from "./api";
 import { runTool } from "./tools";
 
-export type { BriefResult, Image } from "./api";
+export type { BriefInput, BriefResult, Image } from "./api";
 export const accessCode = { get: () => "", set: (_: string) => {} };
 
 type Sample = ((input: unknown, opts?: Record<string, unknown>) => Promise<{ text: string }>) & {
@@ -35,7 +35,7 @@ const toBlob = (img: Image) => new Blob([Uint8Array.from(atob(img.data), c => c.
 const BRIEF_SHAPE = `Return ONLY JSON: {"title": string, "summary": string, "decisions": [string], "people": [string], "todos": [{"task": string, "owner": string|null, "due": "YYYY-MM-DD"|null, "group": string, "priority": "high"|"medium"|"low"}], "gaps": [{"issue": string, "ask": string}]}`;
 
 export const api = {
-  brief: (b: { text: string; source: string; today: string; existingGroups: string[]; images: Image[] }) => ask(async s => {
+  brief: (b: BriefInput) => ask(async s => {
     const r = await s.json<Partial<BriefResult>>(briefPrompt({ ...b, imageCount: b.images.length }) + "\n\n" + BRIEF_SHAPE,
       { modelTier: "default", ...(b.images.length ? { images: b.images.map(toBlob) } : {}) });
     return {
