@@ -1,90 +1,103 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { accessCode } from "./api";
-import { Board } from "./Board";
-import { Capture } from "./Capture";
-import { enableReminders, isNative } from "./native";
-import { store, useCaptures } from "./store";
-import { Talk } from "./Talk";
+import { Icon, type IconName } from "./icons";
+import { enableReminders, isNative, syncReminders, webNotify } from "./native";
+import { Ask } from "./screens/Ask";
+import { CaptureFlow } from "./screens/CaptureFlow";
+import { Notes } from "./screens/Notes";
+import { Today } from "./screens/Today";
+import { Todos } from "./screens/Todos";
+import { allTodos, useCaptures } from "./store";
+import { Sheet, Toasts } from "./ui";
+
+type Tab = "today" | "todos" | "ask" | "notes";
+const TABS: { id: Tab; label: string; icon: IconName }[] = [
+  { id: "today", label: "Today", icon: "home" },
+  { id: "todos", label: "To-dos", icon: "list" },
+  { id: "ask", label: "Ask", icon: "chat" },
+  { id: "notes", label: "Notes", icon: "notes" },
+];
+const isTab = (h: string): h is Tab => TABS.some(t => t.id === h);
+const isTest = import.meta.env.MODE === "artifact";
 
 export function App() {
+  const captures = useCaptures();
+  const [tab, setTab] = useState<Tab>(() => { const h = location.hash.slice(1); return isTab(h) ? h : "today"; });
+  const [todosView, setTodosView] = useState<string | undefined>();
+  const [capture, setCapture] = useState<null | { example: boolean }>(null);
+  const [settings, setSettings] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  const go = (t: Tab, view?: string) => {
+    setTab(t); setTodosView(view);
+    try { history.replaceState(null, "", "#" + t); } catch { /* sandboxed */ }
+    window.scrollTo(0, 0);
+  };
+
+  // Reminders: checked every 30 seconds while open; on phones also handed to the OS.
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
+  const todos = allTodos(captures);
+  const due = todos.filter(t => !t.done && t.remindAt && +new Date(t.remindAt) <= now);
+  useEffect(() => { webNotify(due); }, [due.map(t => t.id + t.remindAt).join()]);
+  useEffect(() => { syncReminders(todos); }, [todos.map(t => t.id + t.remindAt + t.done).join()]);
+
+  const openCapture = (example = false) => setCapture({ example });
+
   return (
-    <div className="wrap">
-      <header>
-        <h1>Co-<span>Pilot</span></h1>
-        {import.meta.env.MODE === "artifact" && <span className="src">Test version</span>}
-        <div className="today">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div>
-      </header>
-      <div className="grid">
-        <div className="col">
-          <Capture />
-          <QuickAdd />
-          <Captured />
-          {import.meta.env.MODE !== "artifact" && <Settings />}
-        </div>
-        <div className="col">
-          <Talk />
-          <Board />
-        </div>
-      </div>
+    <div className="app">
+      <nav className="nav" aria-label="Main">
+        <div className="brand"><span className="logo" aria-hidden="true" /> Co-Pilot{isTest && <span className="tag">Test</span>}</div>
+        <button className="capture-btn" onClick={() => openCapture()}><Icon name="plus" /> <span>New capture</span></button>
+        {TABS.map((t, i) => (
+          <button key={t.id} className="tab" style={{ "--o": i < 2 ? i + 1 : i + 2 } as React.CSSProperties} aria-current={tab === t.id ? "page" : undefined} onClick={() => go(t.id)}>
+            <Icon name={t.icon} /><span>{t.label}</span>
+            {t.id === "today" && due.length > 0 && <span className="badge" aria-label={`${due.length} reminders due`}>{due.length}</span>}
+          </button>
+        ))}
+        <button className="tab settings-tab" onClick={() => setSettings(true)}><Icon name="settings" /><span>Settings</span></button>
+      </nav>
+
+      <main className="main">
+        <button className="icon-btn settings-corner" onClick={() => setSettings(true)} aria-label="Settings"><Icon name="settings" /></button>
+        {tab === "today" && <Today go={go} capture={openCapture} now={now} />}
+        {tab === "todos" && <Todos initial={todosView} capture={() => openCapture()} />}
+        {tab === "ask" && <Ask />}
+        {tab === "notes" && <Notes capture={() => openCapture()} />}
+      </main>
+
+      {capture && <CaptureFlow example={capture.example} onClose={() => setCapture(null)} onSaved={() => { setCapture(null); go("today"); }} />}
+      {settings && <Settings onClose={() => setSettings(false)} />}
+      <Toasts />
     </div>
   );
 }
 
-function QuickAdd() {
-  const [task, setTask] = useState("");
-  return (
-    <section className="panel" aria-labelledby="quickH">
-      <h2 id="quickH">Quick to-do</h2>
-      <form className="row" onSubmit={e => {
-        e.preventDefault(); if (!task.trim()) return;
-        store.addTodo({ task: task.trim(), owner: "me", due: null, group: "Quick adds", priority: "medium" }, "Quick add");
-        setTask("");
-      }}>
-        <input type="text" value={task} onChange={e => setTask(e.target.value)} placeholder="e.g. Send Priya the revised budget by Friday" aria-label="New to-do" />
-        <button className="primary">Add</button>
-      </form>
-    </section>
-  );
-}
-
-function Captured() {
-  const captures = useCaptures();
-  const [pending, setPending] = useState<string | null>(null);
-  return (
-    <section className="panel" aria-labelledby="logH">
-      <div className="row between"><h2 id="logH">Captured</h2><span className="status">Saved on this device</span></div>
-      <ul className="caps">{captures.length ? captures.map(c => (
-        <li key={c.id}>
-          <div className="row between"><span className="ttl">{c.title}</span><span className="src">{c.source}</span></div>
-          {c.summary && <p className="sum">{c.summary}</p>}
-          {!!c.decisions.length && <details><summary>{c.decisions.length} decision{c.decisions.length > 1 ? "s" : ""}</summary>
-            <ul className="dec">{c.decisions.map((d, i) => <li key={i}>{d}</li>)}</ul></details>}
-          <div className="row between">
-            <span className="status">{new Date(c.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · {c.todos.length} to-dos · {c.gaps.length} gaps</span>
-            <button className="linkbtn" onClick={() => {
-              if (pending === c.id) { setPending(null); store.remove(c.id); }
-              else { setPending(c.id); setTimeout(() => setPending(p => (p === c.id ? null : p)), 3000); }
-            }}>{pending === c.id ? "Tap again to remove" : "Remove"}</button>
-          </div>
-        </li>
-      )) : <li className="empty-state">Nothing captured yet. Each meeting, chat or note you brief shows up here.</li>}</ul>
-    </section>
-  );
-}
-
-function Settings() {
+function Settings({ onClose }: { onClose: () => void }) {
   const [code, setCode] = useState(accessCode.get());
   const [notif, setNotif] = useState("");
   return (
-    <section className="panel settings" aria-labelledby="setH">
-      <h2 id="setH">Settings</h2>
-      <label className="hint" htmlFor="code">Access code (only if you set one on your server)</label>
-      <input id="code" type="text" value={code} autoComplete="off" onChange={e => { setCode(e.target.value); accessCode.set(e.target.value); }} />
-      <div className="row">
-        <button className="ghost" onClick={async () => setNotif(await enableReminders() ? "Reminders are on." : "Notifications are blocked. Turn them on in your device or browser settings.")}>Turn on reminder notifications</button>
-        <span className="hint">{notif}</span>
+    <Sheet title="Settings" onClose={onClose}>
+      <div className="settings">
+        <section>
+          <h4>Reminders</h4>
+          <p className="muted">{isNative ? "Get a notification when a reminder is due, even when Co-Pilot is closed." : "Get a notification when a reminder is due while Co-Pilot is open."}</p>
+          <button className="btn ghost" onClick={async () => setNotif(await enableReminders() ? "Reminders are on." : "Notifications are blocked. Turn them on in your device or browser settings.")}>
+            <Icon name="bell" size={16} /> Turn on notifications</button>
+          {notif && <p className="small">{notif}</p>}
+        </section>
+        {!isTest && (
+          <section>
+            <h4>Server access code</h4>
+            <p className="muted">Only needed if you set APP_ACCESS_CODE on your server.</p>
+            <label className="sr" htmlFor="code">Access code</label>
+            <input id="code" type="text" value={code} autoComplete="off" onChange={e => { setCode(e.target.value); accessCode.set(e.target.value); }} />
+          </section>
+        )}
+        <section>
+          <h4>Your data</h4>
+          <p className="muted">Notes and to-dos are saved on this device only.{!isNative && !isTest && " Install Co-Pilot from your browser menu (Install app, or Add to Home Screen) to open it like an app."}</p>
+        </section>
       </div>
-      {!isNative && <p className="hint">Tip: install Co-Pilot from your browser menu ("Install app" or "Add to Home Screen") so it opens like an app.</p>}
-    </section>
+    </Sheet>
   );
 }

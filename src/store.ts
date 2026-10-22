@@ -27,6 +27,7 @@ export const store = {
     return cap;
   },
   remove(id: string) { save(captures.filter(c => c.id !== id)); },
+  restore(c: Capture) { save([c, ...captures.filter(x => x.id !== c.id)]); },
   setTodo(cid: string, id: string, patch: Partial<Todo>) {
     save(captures.map(c => c.id !== cid ? c : { ...c, todos: c.todos.map(t => t.id === id ? { ...t, ...patch } : t) }));
   },

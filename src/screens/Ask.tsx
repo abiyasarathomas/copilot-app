@@ -1,28 +1,33 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { useEffect, useRef, useState } from "react";
-import { api } from "./api";
-import { canListen, canSpeak, listen, speak, stopSpeaking } from "./native";
-import { runTool, type Input } from "./tools";
+import { api } from "../api";
+import { read, write } from "../format";
+import { Icon } from "../icons";
+import { canListen, canSpeak, listen, speak, stopSpeaking } from "../native";
+import { runTool, type Input } from "../tools";
 
 type Msg = { cls: "me" | "bot" | "act"; text: string };
-export function Talk() {
-  const [msgs, setMsgs] = useState<Msg[]>([{ cls: "bot", text: "Hi. Ask what's on your plate, or tell me something to remember." }]);
+const SUGGESTIONS = ["What should I do first today?", "What am I waiting on from others?", "Remind me to call Sam at 3pm"];
+
+export function Ask() {
+  const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [speakOn, setSpeakOn] = useState(() => { try { return localStorage.getItem("copilot.speak") !== "0"; } catch { return true; } });
+  const [speakOn, setSpeakOn] = useState(() => read("copilot.speak", true));
   const [mic, setMic] = useState<{ stop: () => void } | null>(null);
   const history = useRef<Anthropic.Beta.BetaMessageParam[]>([]);
-  const chatEl = useRef<HTMLDivElement>(null);
+  const end = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { chatEl.current?.scrollTo(0, chatEl.current.scrollHeight); }, [msgs]);
-  useEffect(() => { try { localStorage.setItem("copilot.speak", speakOn ? "1" : "0"); } catch { /* ignore */ } if (!speakOn) stopSpeaking(); }, [speakOn]);
+  useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [msgs, busy]);
+  useEffect(() => { write("copilot.speak", speakOn); if (!speakOn) stopSpeaking(); }, [speakOn]);
+  useEffect(() => () => stopSpeaking(), []);
 
   const add = (m: Msg) => setMsgs(x => [...x, m]);
 
   const send = async (text: string) => {
     text = text.trim(); if (!text || busy) return;
     setInput(""); stopSpeaking(); add({ cls: "me", text }); setBusy(true);
-    // Keep the last few exchanges. Claude's replies go back exactly as received.
+    // Claude's replies go back exactly as received; the tools run on this device.
     const turns: Anthropic.Beta.BetaMessageParam[] = [...history.current, { role: "user", content: text }];
     try {
       for (let step = 0; step < 6; step++) {
@@ -65,26 +70,36 @@ export function Talk() {
   };
 
   return (
-    <section className="panel voice" aria-labelledby="talkH">
-      <div className="row between">
-        <h2 id="talkH">Talk to Co-Pilot</h2>
-        {canSpeak && <label className="toggle"><input type="checkbox" checked={speakOn} onChange={e => setSpeakOn(e.target.checked)} /> Speak replies</label>}
+    <div className="page ask">
+      <div className="page-head row-between">
+        <h1>Ask Co-Pilot</h1>
+        {canSpeak && <label className="toggle-row"><input type="checkbox" checked={speakOn} onChange={e => setSpeakOn(e.target.checked)} /> Speak replies</label>}
       </div>
-      <div className="chat" ref={chatEl} aria-live="polite">
-        {msgs.map((m, i) => <div key={i} className={"msg " + m.cls}>{m.text}</div>)}
-        {busy && <div className="msg bot">Thinking…</div>}
+
+      <div className="chat" aria-live="polite">
+        {!msgs.length && (
+          <div className="chat-intro">
+            <p className="muted">Ask about your work, or tell Co-Pilot something to remember. It can add to-dos, tick them off and set reminders.</p>
+            <div className="suggest">{SUGGESTIONS.map(s => <button key={s} className="chip" onClick={() => send(s)}>{s}</button>)}</div>
+          </div>
+        )}
+        {msgs.map((m, i) => <div key={i} className={"msg " + m.cls}>{m.cls === "act" && <Icon name="check" size={12} />}{m.text}</div>)}
+        {busy && <div className="msg bot typing" aria-label="Co-Pilot is thinking"><span /><span /><span /></div>}
+        <div ref={end} />
       </div>
-      <form className="talk" onSubmit={e => { e.preventDefault(); send(input); }}>
+
+      <form className="composer" onSubmit={e => { e.preventDefault(); send(input); }}>
         {canListen && (
-          <button className="mic" type="button" aria-pressed={!!mic} aria-label="Speak to Co-Pilot" onClick={talk}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+          <button className={"icon-btn mic" + (mic ? " live" : "")} type="button" aria-pressed={!!mic} aria-label={mic ? "Stop listening" : "Speak to Co-Pilot"} onClick={talk}>
+            <Icon name={mic ? "stop" : "mic"} />
           </button>
         )}
-        <textarea aria-label="Message to Co-Pilot" placeholder="Ask or tell Co-Pilot anything" value={input}
+        <label className="sr" htmlFor="ask-in">Message to Co-Pilot</label>
+        <textarea id="ask-in" rows={1} placeholder={mic ? "Listening…" : "Message Co-Pilot"} value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }} />
-        <button className="primary" type="submit" disabled={busy}>Send</button>
+        <button className="icon-btn filled" type="submit" disabled={busy || !input.trim()} aria-label="Send"><Icon name="send" /></button>
       </form>
-    </section>
+    </div>
   );
 }

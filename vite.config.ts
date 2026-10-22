@@ -35,10 +35,10 @@ function artifactApi(): Plugin {
   return {
     name: "copilot-artifact-api",
     enforce: "pre",
-    resolveId(source, importer) {
-      if (source === "./api" && importer?.includes("/src/") && !importer.endsWith("api.artifact.ts")) {
-        return this.resolve("./api.artifact", importer);
-      }
+    async resolveId(source, importer, opts) {
+      if (!importer || importer.endsWith("api.artifact.ts") || !/(^|\/)api$/.test(source)) return;
+      const r = await this.resolve(source, importer, { ...opts, skipSelf: true });
+      if (r?.id.endsWith("/src/api.ts")) return r.id.replace(/api\.ts$/, "api.artifact.ts");
     },
   };
 }
