@@ -11,6 +11,7 @@ export function App() {
     <div className="wrap">
       <header>
         <h1>Co-<span>Pilot</span></h1>
+        {import.meta.env.MODE === "artifact" && <span className="src">Test version</span>}
         <div className="today">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div>
       </header>
       <div className="grid">
@@ -18,7 +19,7 @@ export function App() {
           <Capture />
           <QuickAdd />
           <Captured />
-          <Settings />
+          {import.meta.env.MODE !== "artifact" && <Settings />}
         </div>
         <div className="col">
           <Talk />

@@ -8,6 +8,8 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import type { TodoRef } from "./types";
 
 export const isNative = Capacitor.isNativePlatform();
+// The in-Claude test build runs in a frame that blocks the mic and screen sharing.
+const inArtifact = import.meta.env.MODE === "artifact";
 const lang = navigator.language || "en-US";
 
 /* ---------- speaking replies ---------- */
@@ -41,7 +43,7 @@ type WebSR = { new (): { lang: string; interimResults: boolean; continuous: bool
 const WebSpeech = (window as unknown as { SpeechRecognition?: WebSR; webkitSpeechRecognition?: WebSR }).SpeechRecognition
   || (window as unknown as { webkitSpeechRecognition?: WebSR }).webkitSpeechRecognition;
 
-export const canListen = isNative || !!WebSpeech;
+export const canListen = !inArtifact && (isNative || !!WebSpeech);
 
 /** Starts listening. Calls onText with the words so far; resolves when finished. */
 export async function listen(onText: (t: string) => void, opts: { continuous?: boolean } = {}): Promise<{ stop: () => void; done: Promise<string> }> {
@@ -107,7 +109,7 @@ export function webNotify(due: TodoRef[]) {
 }
 
 /* ---------- screen capture (desktop browsers) ---------- */
-export const canCaptureScreen = !isNative && !!navigator.mediaDevices?.getDisplayMedia;
+export const canCaptureScreen = !inArtifact && !isNative && !!navigator.mediaDevices?.getDisplayMedia;
 
 /** Asks the user to pick a screen or window, grabs one frame as a JPEG, then stops sharing. */
 export async function captureScreen(): Promise<{ media_type: "image/jpeg"; data: string; url: string }> {

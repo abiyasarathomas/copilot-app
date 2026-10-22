@@ -36,6 +36,7 @@ export const api = {
   brief: (b: { text: string; source: string; today: string; existingGroups: string[]; images: Image[] }) => post<BriefResult>("brief", b),
   day: (b: { now: string; recent: unknown[]; todos: unknown[]; gaps: unknown[] }) => post<string>("day", b),
   prioritize: (b: { now: string; items: { key: string; [k: string]: unknown }[] }) => post<{ order: { key: string; why: string }[] }>("prioritize", b),
-  chat: (b: { now: string; messages: Anthropic.Beta.BetaMessageParam[] }) =>
+  // `log` is only used by the in-Claude test build, which runs the tools itself.
+  chat: (b: { now: string; messages: Anthropic.Beta.BetaMessageParam[] }, _log?: (t: string) => void) =>
     post<{ content: Anthropic.Beta.BetaContentBlock[]; stop_reason: string | null }>("chat", b),
 };

@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "types": ["node", "vite/client", "vite-plugin-pwa/client"]
   },
-  "include": ["src", "api", "server", "vite.config.ts", "capacitor.config.ts"]
+  "include": ["src", "api", "server", "shared", "vite.config.ts", "capacitor.config.ts"]
 }

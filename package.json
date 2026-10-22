@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:test": "tsc --noEmit && vite build --mode artifact && node scripts/make-test-page.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "mobile:sync": "npm run build && cap sync",

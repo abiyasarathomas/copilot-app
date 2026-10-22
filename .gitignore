@@ -6,3 +6,4 @@ dev-dist
 .vercel
 android/app/build
 ios/App/Pods
+dist-test

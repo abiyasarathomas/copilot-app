@@ -29,8 +29,23 @@ function devApi(): Plugin {
   };
 }
 
+// `npm run build:test` makes a build that runs inside a Claude artifact: Claude is
+// reached through the artifact instead of our server, so it needs no API key.
+function artifactApi(): Plugin {
+  return {
+    name: "copilot-artifact-api",
+    enforce: "pre",
+    resolveId(source, importer) {
+      if (source === "./api" && importer?.includes("/src/") && !importer.endsWith("api.artifact.ts")) {
+        return this.resolve("./api.artifact", importer);
+      }
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), "")); // ANTHROPIC_API_KEY from .env
+  if (mode === "artifact") return { base: "./", build: { outDir: "dist-test", rollupOptions: { output: { inlineDynamicImports: true } } }, plugins: [react(), artifactApi()] };
   return {
     plugins: [
       react(),
