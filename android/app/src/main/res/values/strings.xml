@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Co-Pilot</string>
+    <string name="title_activity_main">Co-Pilot</string>
+    <string name="package_name">app.copilot.brief</string>
+    <string name="custom_url_scheme">app.copilot.brief</string>
+</resources>
