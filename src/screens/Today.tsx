@@ -55,7 +55,7 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "ask", view?: 
 
   const head = (
     <div className="page-head">
-      <p className="eyebrow">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
+      <p className="eyebrow">Pre-flight · {new Date().toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</p>
       <h1>{greeting()}</h1>
     </div>
   );
@@ -84,8 +84,8 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "ask", view?: 
   const stats = [
     { n: mine.length, label: "On me", to: "mine" },
     { n: open.length - mine.length, label: "Waiting on others", to: "others" },
-    { n: overdue.length, label: "Overdue", to: "when", hot: overdue.length > 0 },
-    { n: openGaps.length, label: "Missing pieces", to: "gaps", hot: openGaps.length > 0 },
+    { n: overdue.length, label: "Overdue", to: "when", alarm: overdue.length > 0 },
+    { n: openGaps.length, label: "Missing", to: "gaps", hot: openGaps.length > 0 },
   ];
 
   return (
@@ -111,7 +111,7 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "ask", view?: 
 
       <div className="stats">
         {stats.map(s => (
-          <button key={s.label} className={"stat" + (s.hot ? " hot" : "")} onClick={() => go("todos", s.to)}>
+          <button key={s.label} className={"stat" + ("hot" in s && s.hot ? " hot" : "") + ("alarm" in s && s.alarm ? " alarm" : "")} onClick={() => go("todos", s.to)}>
             <span className="stat-n">{s.n}</span><span className="stat-l">{s.label}</span>
           </button>
         ))}
@@ -119,7 +119,7 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "ask", view?: 
 
       <section className="card brief">
         <div className="card-head">
-          <h2>Today's brief</h2>
+          <div><p className="card-label">Flight plan</p><h2>Today's brief</h2></div>
           <div className="row">
             {day && canSpeak && <button className="icon-btn" onClick={() => speak(day.text)} aria-label="Read the brief aloud"><Icon name="sound" /></button>}
             {day && <button className="btn small ghost" disabled={dayBusy} onClick={writeDay}>{dayBusy ? "Updating…" : "Refresh"}</button>}
@@ -135,7 +135,7 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "ask", view?: 
 
       <section className="card">
         <div className="card-head">
-          <h2>Focus next</h2>
+          <div><p className="card-label">Sequence</p><h2>Focus next</h2></div>
           <button className="btn small ghost" disabled={prioBusy || !live.size} onClick={prioritize}>{prioBusy ? "Ranking…" : focus ? "Re-rank" : "Rank for me"}</button>
         </div>
         {focus?.order.length ? (

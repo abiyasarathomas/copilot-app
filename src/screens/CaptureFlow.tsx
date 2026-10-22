@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { api, type BriefResult, type Image } from "../api";
+import { fmtDue } from "../format";
 import { Icon } from "../icons";
 import { canCaptureScreen, canListen, captureScreen, listen } from "../native";
 import { allTodos, newId, store, todayISO, useCaptures } from "../store";
@@ -126,7 +127,7 @@ export function CaptureFlow({ example, onClose, onSaved }: { example?: boolean; 
                     <span className="todo-task">{t.task}</span>
                     <span className="meta">
                       {t.owner ? <span>{t.owner}</span> : <span className="warn">No owner</span>}
-                      {t.due ? <span>Due {t.due}</span> : <span className="warn">No date</span>}
+                      {t.due ? <span>Due {fmtDue(t.due)}</span> : <span className="warn">No date</span>}
                       <span>{t.group}</span>
                       <span className={"pri " + t.priority}>{t.priority}</span>
                     </span>
