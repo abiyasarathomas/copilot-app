@@ -7,6 +7,7 @@ import { briefPerson } from "../assistant";
 import { allGaps, allTodos, counterpart, flags, isMine, store, todayISO, useCaptures } from "../store";
 import { Poster } from "../poster";
 import { GapCard, TodoRow, toast } from "../ui";
+import { Avatar, Ring } from "../visual";
 
 type Focus = { at: string; order: { key: string; why: string; text: string; kind: string }[] };
 type Day = { date: string; text: string };
@@ -70,15 +71,16 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
       <div className="page">
         {head}
         <section className="card onboard">
-          <h2>Your briefing builds itself</h2>
-          <ol className="steps">
-            <li><b>Turn on listening</b> in a meeting or conversation, or let Co-Pilot watch your screen.</li>
-            <li><b>Co-Pilot keeps track</b> of who promised what, decisions and open questions, on its own.</li>
-            <li><b>Ask "Brief me"</b> for a 60-second morning brief, or "what do I owe Sam?"</li>
-          </ol>
+          <div className="howto big" aria-label="How it works">
+            <span><b className="p-cobalt"><Icon name="mic" size={30} /></b>Listen</span>
+            <Icon name="arrow" size={20} />
+            <span><b className="p-lime"><Icon name="users" size={30} /></b>Who owes who</span>
+            <Icon name="arrow" size={20} />
+            <span><b className="p-saffron"><Icon name="sound" size={30} /></b>60s brief</span>
+          </div>
           <div className="row">
             <button className="btn primary" onClick={() => go("live")}><Icon name="mic" /> Start listening</button>
-            <button className="btn ghost" onClick={() => capture()}>Add notes instead</button>
+            <button className="btn ghost" onClick={() => capture()}><Icon name="file" size={18} /> Add notes</button>
           </div>
         </section>
       </div>
@@ -87,11 +89,12 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
 
   const live = new Set([...open.map(t => "t|" + t.cid + "|" + t.id), ...openGaps.map(g => "g|" + g.cid + "|" + g.id)]);
   const stats = [
-    { n: mine.length, label: "I owe", to: "owe" },
-    { n: open.length - mine.length, label: "Owed to me", to: "owed" },
-    { n: overdue.length, label: "Overdue", to: "owe", alarm: overdue.length > 0 },
-    { n: openGaps.length + open.filter(t => flags(t).length).length, label: "Missing", to: "missing", hot: openGaps.length > 0 },
+    { n: mine.length, label: "I owe", to: "owe", icon: "out" as const },
+    { n: open.length - mine.length, label: "Owed to me", to: "owed", icon: "in" as const },
+    { n: overdue.length, label: "Overdue", to: "owe", icon: "calendar" as const },
+    { n: openGaps.length + open.filter(t => flags(t).length).length, label: "Missing", to: "missing", icon: "question" as const },
   ];
+  const kept = todos.length ? todos.filter(t => t.done).length / todos.length : 0;
 
   return (
     <div className="page">
@@ -117,57 +120,66 @@ export function Today({ go, capture, now }: { go: (tab: "todos" | "live", view?:
       <div className="poster-grid">
         {stats.map((st, i) => (
           <Poster key={st.label} color={(["cobalt", "lime", "coral", "saffron"] as const)[i]} seed={i + 2} onClick={() => go("todos", st.to)} label={`${st.n} ${st.label}`}
-            kicker={st.label} figure={st.n} />
+            kicker={<span className="kick"><Icon name={st.icon} size={16} /> {st.label}</span>} figure={st.n} />
         ))}
       </div>
 
+      <section className="card pulse">
+        <Ring value={kept} size={92} stroke={11} label={`${Math.round(kept * 100)}% of promises kept`}>
+          <b>{Math.round(kept * 100)}%</b><small>kept</small>
+        </Ring>
+        <div className="pulse-people">
+          <p className="card-label"><Icon name="sound" size={13} /> Before you meet</p>
+          {people.length ? (
+            <div className="faces-row">
+              {people.map(([n, c]) => (
+                <button key={n} className="face-btn" onClick={() => briefPerson(n)} aria-label={`Hear what you and ${n} owe each other (${c})`}>
+                  <Avatar name={n} size={48} /><span className="face-n">{c}</span><span className="face-name">{n.split(" ")[0]}</span>
+                </button>
+              ))}
+            </div>
+          ) : <p className="muted small">No one yet</p>}
+        </div>
+      </section>
+
       <Poster color="fog" seed={9} kicker="Morning brief" aside="60 seconds" label="Morning brief"
-        title={day ? undefined : <h2>What's due, what's late, and who owes you.</h2>}>
+        title={day ? undefined : <span className="big-ic"><Icon name="sound" size={44} /></span>}>
         {day ? <p className="brief-text">{day.text}</p> : null}
         <div className="row">
           {day && canSpeak && <button className="btn primary" onClick={() => speak(day.text)}><Icon name="sound" size={18} /> Read it to me</button>}
-          {day ? <button className="btn ghost" disabled={dayBusy} onClick={writeDay}>{dayBusy ? "Updating…" : "Refresh"}</button>
-            : <button className="btn primary" disabled={dayBusy} onClick={writeDay}><Icon name="spark" /> {dayBusy ? "Writing…" : "Write today's brief"}</button>}
+          {day ? <button className="icon-btn" disabled={dayBusy} onClick={writeDay} aria-label="Refresh brief" title="Refresh"><Icon name="spark" /></button>
+            : <button className="btn primary" disabled={dayBusy} onClick={writeDay}><Icon name="spark" /> {dayBusy ? "Writing…" : "Brief me"}</button>}
         </div>
       </Poster>
 
       <section className="card">
         <div className="card-head">
-          <div><p className="card-label">Next up</p><h2>Focus next</h2></div>
-          <button className="btn small ghost" disabled={prioBusy || !live.size} onClick={prioritize}>{prioBusy ? "Ranking…" : focus ? "Re-rank" : "Rank for me"}</button>
+          <h2 className="h-ic"><Icon name="flag" size={18} /> Focus</h2>
+          <button className="btn small ghost" disabled={prioBusy || !live.size} onClick={prioritize}><Icon name="spark" size={14} /> {prioBusy ? "Ranking…" : focus ? "Re-rank" : "Rank"}</button>
         </div>
         {focus?.order.length ? (
           <>
             <ol className="focus">{focus.order.map(o => (
-              <li key={o.key} className={live.has(o.key) ? "" : "gone"}>
-                <span>{o.text}</span>
-                <span className="why">{o.kind === "missing piece" ? "Missing piece. " : ""}{o.why}</span>
+              <li key={o.key} className={live.has(o.key) ? "" : "gone"} title={o.why}>
+                <span>{o.kind === "missing piece" && <Icon name="question" size={15} />} {o.text}</span>
               </li>
             ))}</ol>
-            <p className="tiny">Ranked {fmtTime(focus.at)}</p>
+            <p className="tiny"><Icon name="spark" size={11} /> {fmtTime(focus.at)}</p>
           </>
-        ) : <p className="muted">Co-Pilot can put your tasks and missing pieces in the order to tackle them.</p>}
+        ) : <div className="ghost-list" aria-hidden="true"><i /><i /><i /></div>}
       </section>
-
-      {!!people.length && (
-        <section className="card">
-          <div className="card-head"><div><p className="card-label">Pre-meeting</p><h2>Seeing someone soon?</h2></div></div>
-          <p className="muted small">Tap a name to hear what you owe each other.</p>
-          <div className="chips">{people.map(([n, c]) => <button key={n} className="chip" onClick={() => briefPerson(n)}><Icon name="sound" size={14} /> {n} <span className="count">{c}</span></button>)}</div>
-        </section>
-      )}
 
       {!!soon.length && (
         <section className="card">
-          <div className="card-head"><h2>Due today or overdue</h2><button className="link" onClick={() => go("todos", "owe")}>All promises <Icon name="arrow" size={14} /></button></div>
+          <div className="card-head"><h2 className="h-ic"><Icon name="calendar" size={18} /> Due now <span className="count-dot">{soon.length}</span></h2><button className="icon-btn" onClick={() => go("todos", "owe")} aria-label="All promises"><Icon name="arrow" /></button></div>
           <div className="todo-list">{soon.map(t => <TodoRow key={t.cid + t.id} t={t} />)}</div>
         </section>
       )}
 
       <section className="card">
-        <div className="card-head"><h2>Missing pieces</h2>{openGaps.length > 3 && <button className="link" onClick={() => go("todos", "missing")}>See all {openGaps.length} <Icon name="arrow" size={14} /></button>}</div>
+        <div className="card-head"><h2 className="h-ic"><Icon name="question" size={18} /> Missing <span className="count-dot">{openGaps.length}</span></h2>{openGaps.length > 3 && <button className="icon-btn" onClick={() => go("todos", "missing")} aria-label={`See all ${openGaps.length}`}><Icon name="arrow" /></button>}</div>
         {openGaps.length ? <ul className="gaps">{openGaps.slice(0, 3).map(g => <GapCard key={g.cid + g.id} g={g} />)}</ul>
-          : <p className="muted">Nothing to chase. Tasks with no owner, no date or an open question will show up here.</p>}
+          : <p className="all-clear"><Icon name="check" size={18} /> All clear</p>}
       </section>
 
     </div>

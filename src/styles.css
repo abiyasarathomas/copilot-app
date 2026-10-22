@@ -360,3 +360,124 @@ button.poster:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .segmented button[aria-selected="true"] .n{color:var(--bg)}
 @media (prefers-reduced-motion:reduce){button.poster{transition:none}button.poster:hover{transform:none}}
 .person .pixels.bottom{display:none}
+
+/* ---------- visual pass: pictures over words ---------- */
+/* Avatars: a circle in the person's poster colour; "You" is ink. */
+.av{display:inline-grid;place-items:center;flex:none;border-radius:50%;background:var(--pc,var(--sunk));color:#16141A;font-family:var(--display);font-weight:800;letter-spacing:-.02em;line-height:1;box-shadow:0 0 0 2px var(--surface)}
+.av.me{background:var(--ink);color:var(--bg);font-weight:700;letter-spacing:0}
+.av.ghost{background:var(--warn-soft);color:var(--warn)}
+.av.more{background:var(--sunk);color:var(--ink);font:500 11px var(--mono)}
+.flow{display:inline-flex;align-items:center;gap:2px;color:var(--muted)}
+.faces{display:inline-flex;align-items:center}
+.faces .av+.av{margin-left:-4px}
+
+/* Pills: icon + a word or number. */
+.pill{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border-radius:12px;background:var(--sunk);color:var(--ink);font:500 12px var(--mono);white-space:nowrap}
+.pill.hot{background:var(--hi-soft);color:var(--hi)}
+.pill.warm{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.meta{gap:6px}
+.kick{display:inline-flex;align-items:center;gap:6px}
+.h-ic{display:inline-flex;align-items:center;gap:8px}
+.count-dot{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:var(--ink);color:var(--bg);font:500 12px var(--mono)}
+.all-clear{display:flex;align-items:center;gap:8px;color:var(--ok);font-weight:600}
+
+/* To-dos: a priority stripe on the left instead of a word. */
+.todo{position:relative;padding-left:10px}
+.todo::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:2px;background:var(--line)}
+.todo.pri-high::before{background:var(--coral)}
+.todo.pri-medium::before{background:var(--saffron)}
+.todo.done::before{background:transparent}
+.said{display:flex;gap:6px;align-items:flex-start;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
+.said::before,.said::after{content:none}
+.said .icon{vertical-align:-1px;margin-right:4px;opacity:.7}
+
+/* Missing pieces: an icon tile, the question, a one-tap sorted. */
+.gap{flex-direction:row;align-items:center;gap:12px;border-left:0}
+.gap-icon{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--warn-soft);color:var(--warn)}
+.gap-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gap-ask{display:inline-flex;align-items:center;gap:4px}
+
+/* Rings */
+.ring{position:relative;display:inline-grid;place-items:center;flex:none}
+.ring svg{position:absolute;inset:0}
+.ring-track{stroke:var(--sunk)}
+.ring-fill{stroke:var(--ok);transition:stroke-dasharray .6s ease}
+.ring-mid{position:relative;display:flex;flex-direction:column;align-items:center;line-height:1}
+.ring-mid b{font:800 24px var(--display);letter-spacing:-.03em}
+.ring-mid small{font:400 11px var(--mono);color:var(--muted);margin-top:2px}
+
+/* Briefing: kept ring beside tappable faces. */
+.pulse{flex-direction:row;align-items:center;gap:18px}
+.pulse-people{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.pulse-people .card-label{display:inline-flex;align-items:center;gap:6px;margin:0}
+.faces-row{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 2px;scrollbar-width:none}
+.face-btn{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:none;padding:0;min-width:52px}
+.face-btn:hover .av{transform:translateY(-2px)}
+.face-btn .av{transition:transform .15s ease}
+.face-n{position:absolute;top:-4px;right:-2px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--ink);color:var(--bg);font:500 11px/20px var(--mono)}
+.face-name{font:500 12px var(--body);color:var(--muted);max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ghost-list{display:flex;flex-direction:column;gap:8px}
+.ghost-list i{display:block;height:12px;border-radius:6px;background:var(--sunk)}
+.ghost-list i:nth-child(1){width:80%}.ghost-list i:nth-child(2){width:60%}.ghost-list i:nth-child(3){width:40%}
+.focus li{grid-template-columns:44px minmax(0,1fr);align-items:center}
+.focus li::before{grid-row:auto;font:800 24px/1 var(--display);color:var(--ink);letter-spacing:-.03em}
+.focus li span{display:inline-flex;align-items:center;gap:6px}
+.poster-title h2{display:flex;gap:10px}
+
+/* How it works: three icon tiles. */
+.howto{display:flex;align-items:center;justify-content:center;gap:10px;padding:20px 0;color:var(--muted)}
+.howto>span{display:flex;flex-direction:column;align-items:center;gap:8px;font:500 13px var(--mono);color:var(--ink);text-align:center;max-width:90px}
+.howto b{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;background:var(--pc);color:#16141A}
+.howto.big b{width:72px;height:72px}
+
+/* Live: a big round mic over a sound wave, a dial of round actions. */
+.live .poster{align-items:center;text-align:center}
+.live .poster-top{text-align:left}
+.stage{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;padding:8px 0 0}
+.orb{width:128px;height:128px;min-height:0;margin:0;padding:0;border-radius:50%;justify-content:center;box-shadow:0 0 0 10px rgba(22,20,26,.08),0 0 0 22px rgba(22,20,26,.05)}
+.orb.on{background:var(--hi);color:#fff}
+@media (prefers-reduced-motion:no-preference){.orb.on{animation:pulse 1.6s ease-in-out infinite}@keyframes pulse{50%{box-shadow:0 0 0 16px rgba(22,20,26,.1),0 0 0 34px rgba(22,20,26,.04)}}}
+.wave{width:min(100%,360px);height:40px;fill:var(--ink);opacity:.85}
+.live .caption{font:600 20px/1.35 var(--display);min-height:1.4em;max-width:30ch;margin:0 auto}
+.tally{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.poster .pill{background:rgba(22,20,26,.12);color:var(--ink)}
+.poster .pill .dot{background:var(--ink)}
+.dial{display:flex;justify-content:center;gap:18px;flex-wrap:wrap}
+.dial-btn{display:flex;flex-direction:column;align-items:center;gap:6px;border:0;background:none;font:500 12px var(--mono);color:var(--ink);min-width:64px}
+.dial-ic{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);transition:transform .15s ease}
+.dial-btn:hover:not(:disabled) .dial-ic{transform:translateY(-2px)}
+.dial-btn[aria-pressed="true"] .dial-ic{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.feed-wrap{border-top:0;padding-top:0}
+.feed-item{grid-template-columns:40px minmax(0,1fr) auto;align-items:start}
+.feed-icon{width:40px;height:40px;border-radius:50%;border:0;background:var(--sunk);color:var(--ink)}
+.feed-item.k-todo .feed-icon{background:var(--lime);color:#16141A}
+.feed-item.k-gap .feed-icon{background:var(--saffron);color:#16141A}
+.feed-item.k-decision .feed-icon{background:var(--cobalt);color:#16141A}
+.feed-item.k-draft .feed-icon{background:var(--orchid);color:#16141A}
+.feed-item.k-you .feed-icon{background:var(--fog);color:#16141A}
+.feed-item.k-copilot .feed-icon{background:var(--ink);color:var(--bg)}
+.feed-body{padding-top:8px}
+.feed-who{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.feed-time{display:inline-flex;gap:4px;align-items:center;padding-top:10px;font:400 11px var(--mono);color:var(--muted)}
+
+/* History: a timeline of source icons. */
+.timeline{position:relative}
+.note-head{grid-template-columns:44px minmax(0,1fr);align-items:center;gap:12px}
+.note-src{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--sunk);color:var(--ink)}
+.note-main{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ic-list{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px}
+.ic-list li{display:flex;gap:8px;align-items:flex-start}
+.ic-list li .icon{margin-top:4px;color:var(--muted)}
+.ic-list li.done{text-decoration:line-through;color:var(--muted)}
+
+.segmented button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.empty-icon{width:80px;height:80px;border-radius:50%;border:0;background:var(--sunk)}
+.empty{padding:48px 16px}
+.draft-head{display:flex;align-items:center;gap:10px}
+.page-head.row-between{align-items:center;padding-right:48px}
+@media (min-width:900px){.page-head.row-between{padding-right:0}}
+@media (max-width:340px){.pulse{flex-direction:column;align-items:flex-start}}
+@media (max-width:420px){.howto{gap:6px}.howto b{width:52px;height:52px}.dial{gap:10px}}
+@media (prefers-reduced-motion:reduce){.ring-fill,.dial-ic,.face-btn .av{transition:none}}
+.big-ic{display:grid;place-items:center;width:84px;height:84px;border-radius:50%;background:var(--ink);color:var(--pc)}

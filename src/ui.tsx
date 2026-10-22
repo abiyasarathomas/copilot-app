@@ -1,8 +1,9 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { fmtDue, fmtTime, localInput, whenBucket } from "./format";
+import { fmtTime, localInput } from "./format";
 import { Icon } from "./icons";
-import { counterpart, flags, sideOf, store } from "./store";
+import { counterpart, sideOf, store } from "./store";
 import type { GapRef, TodoRef } from "./types";
+import { Due, Flow } from "./visual";
 
 /* ---------- toasts ---------- */
 type Toast = { id: number; text: string; undo?: () => void };
@@ -49,28 +50,29 @@ export function Sheet({ title, onClose, children, footer }: { title: string; onC
 }
 
 /* ---------- one to-do ---------- */
-export function TodoRow({ t, showGroup = true, showOwner = true }: { t: TodoRef; showGroup?: boolean; showOwner?: boolean }) {
+// Pictures over words: who-to-whom avatars, a calendar chip, a priority stripe,
+// and missing pieces as warning chips. The task and its quote are the only prose.
+export function TodoRow({ t, showOwner = true }: { t: TodoRef; showGroup?: boolean; showOwner?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [v, setV] = useState(localInput(t.remindAt));
-  const b = whenBucket(t.due);
   const toggle = () => {
     store.setTodo(t.cid, t.id, { done: !t.done });
     if (!t.done) toast("Marked done", () => store.setTodo(t.cid, t.id, { done: false }));
   };
+  const owed = sideOf(t) === "owed";
   return (
-    <div className={"todo" + (t.done ? " done" : "")}>
+    <div className={"todo pri-" + t.priority + (t.done ? " done" : "")}>
       <button className={"check" + (t.done ? " on" : "")} onClick={toggle} aria-pressed={t.done} aria-label={(t.done ? "Mark not done: " : "Mark done: ") + t.task}>
         {t.done && <Icon name="check" size={14} />}
       </button>
       <div className="todo-main">
         <div className="todo-task">{t.task}</div>
-        {t.quote && <q className="said">{t.quote}</q>}
+        {t.quote && <q className="said"><Icon name="quote" size={12} />{t.quote}</q>}
         <div className="meta">
-          {showOwner && t.owner && <span>{sideOf(t) === "owed" ? `${counterpart(t)} owes you` : counterpart(t) ? `You owe ${counterpart(t)}` : "On you"}</span>}
-          {t.due && <span className={b === "Overdue" || b === "Today" ? "warn" : ""}>Due {fmtDue(t.due)}</span>}
-          {flags(t).map(f => <span key={f} className="warn">{f}</span>)}
-          {showGroup && <span>{t.group}</span>}
-          {t.remindAt && <span className="accent"><Icon name="bell" size={12} /> {fmtTime(t.remindAt)}</span>}
+          {showOwner && <Flow from={owed ? counterpart(t) : "me"} to={owed ? "me" : counterpart(t)} />}
+          <Due due={t.due} />
+          {!t.owner && <span className="pill warm" title="No owner"><Icon name="user" size={13} /> ?</span>}
+          {t.remindAt && <span className="pill" title="Reminder"><Icon name="bell" size={13} /> {fmtTime(t.remindAt)}</span>}
         </div>
         {editing && (
           <div className="remind">
@@ -82,7 +84,6 @@ export function TodoRow({ t, showGroup = true, showOwner = true }: { t: TodoRef;
         )}
       </div>
       <div className="todo-side">
-        <span className={"pri " + t.priority}>{t.priority}</span>
         {!t.done && <button className="icon-btn small" onClick={() => setEditing(e => !e)} aria-label={"Reminder for " + t.task} aria-expanded={editing}><Icon name="bell" size={16} /></button>}
       </div>
     </div>
@@ -92,11 +93,13 @@ export function TodoRow({ t, showGroup = true, showOwner = true }: { t: TodoRef;
 export function GapCard({ g }: { g: GapRef }) {
   return (
     <li className="gap">
-      <span className="gap-from">{g.from}</span>
-      <span className="gap-issue">{g.issue}</span>
-      {g.ask && <span className="gap-ask">Next step: {g.ask}</span>}
-      <button className="btn small ghost" onClick={() => { store.setGapDone(g.cid, g.id, true); toast("Marked sorted", () => store.setGapDone(g.cid, g.id, false)); }}>
-        <Icon name="check" size={14} /> Sorted
+      <span className="gap-icon"><Icon name="question" size={20} /></span>
+      <div className="gap-main">
+        <span className="gap-issue">{g.issue}</span>
+        {g.ask && <span className="gap-ask"><Icon name="arrow" size={14} /> {g.ask}</span>}
+      </div>
+      <button className="icon-btn small" aria-label={"Mark sorted: " + g.issue} title="Sorted" onClick={() => { store.setGapDone(g.cid, g.id, true); toast("Marked sorted", () => store.setGapDone(g.cid, g.id, false)); }}>
+        <Icon name="check" size={18} />
       </button>
     </li>
   );
@@ -129,7 +132,7 @@ export function CopyBox({ text, onChange, onRewrite, busy }: { text: string; onC
 export function Empty({ icon, title, children, action }: { icon: Parameters<typeof Icon>[0]["name"]; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="empty">
-      <span className="empty-icon"><Icon name={icon} size={24} /></span>
+      <span className="empty-icon"><Icon name={icon} size={36} /></span>
       <strong>{title}</strong>
       {children && <p>{children}</p>}
       {action}

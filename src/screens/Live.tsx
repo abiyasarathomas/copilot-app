@@ -4,6 +4,7 @@ import { Icon, type IconName } from "../icons";
 import { canCaptureScreen, canListen, canSpeak } from "../native";
 import { CopyBox } from "../ui";
 import { Poster } from "../poster";
+import { Avatar, Count, Wave } from "../visual";
 
 const KIND: Record<FeedItem["kind"], { icon: IconName; label: string }> = {
   todo: { icon: "check", label: "Promise" },
@@ -26,57 +27,76 @@ export function Live() {
   const status = a.busy === "speaking" ? "Speaking" : a.busy === "thinking" ? "Thinking" : a.awaiting ? "Go ahead, I'm listening"
     : a.listening ? (a.demo ? "Playing a demo meeting" : "Listening") : a.watching ? "Watching your screen" : "Ready";
 
+  const tone = a.busy === "speaking" ? "lime" : a.awaiting ? "saffron" : a.listening || a.watching ? "cobalt" : "fog";
+  const on = a.listening || a.watching || !!a.busy;
+  const n = (k: FeedItem["kind"]) => a.feed.filter(f => f.kind === k).length;
+
   return (
     <div className="page live">
-      <Poster color={a.busy === "speaking" ? "lime" : a.awaiting ? "saffron" : a.listening || a.watching ? "cobalt" : "fog"} live={a.listening || a.watching || !!a.busy} seed={11}
-        kicker="Co-Pilot / Live" aside={<>{status}{a.listening && !a.demo ? ` · ${mins} min` : ""}{a.busy === "reading" ? " · writing it down" : ""}</>}
-        rank={a.listening ? "On air" : a.watching ? "Watching" : "Standby"}
-        title={<h1>{a.awaiting ? "Go ahead." : a.busy === "speaking" ? "Speaking." : a.listening || a.watching ? "Listening." : "Ready when you are."}</h1>}
-        caption={<p className="caption" aria-live="polite">
-          {a.caption ? <>“{a.caption}”</> : a.listening ? <>Say <b>“Co-Pilot”</b> and your question any time.</>
-            : canListen ? "Turn on listening in a meeting. I'll keep track of who promised what, decisions and open questions." : "I keep track of who promised what, so you don't have to."}
-        </p>}>
-        <button className={"orb" + (a.listening ? " on" : "")} aria-pressed={a.listening} disabled={a.demo}
-          onClick={() => (a.listening ? stopListening() : canListen ? startListening() : playDemo())}>
-          <Icon name={a.listening ? "stop" : "mic"} size={22} />
-          <span>{a.demo ? "Demo playing" : a.listening ? "Stop listening" : canListen ? "Start listening" : "Play a demo meeting"}</span>
-        </button>
+      <Poster color={tone} live={on} seed={11}
+        kicker="Co-Pilot / Live" aside={<>{status}{a.listening && !a.demo ? ` · ${mins} min` : ""}</>}
+        rank={a.listening ? "On air" : a.watching ? "Watching" : "Standby"}>
+        <div className="stage">
+          <button className={"orb" + (a.listening ? " on" : "")} aria-pressed={a.listening} disabled={a.demo}
+            aria-label={a.demo ? "Demo playing" : a.listening ? "Stop listening" : canListen ? "Start listening" : "Play a demo meeting"}
+            onClick={() => (a.listening ? stopListening() : canListen ? startListening() : playDemo())}>
+            <Icon name={a.listening ? "stop" : a.busy === "speaking" ? "sound" : "mic"} size={40} />
+          </button>
+          <Wave live={on} />
+        </div>
+        <p className="caption" aria-live="polite">
+          {a.caption ? <>“{a.caption}”</> : a.listening ? <>Say <b>“Co-Pilot”</b></> : canListen ? "Tap to listen" : "Tap to play a demo"}
+        </p>
+        <div className="tally" aria-label="Picked up so far">
+          <Count icon="check" n={n("todo")} label="promises" />
+          <Count icon="flag" n={n("decision")} label="decisions" />
+          <Count icon="question" n={n("gap")} label="missing" />
+          {a.busy === "reading" && <span className="pill"><span className="dot" /> writing</span>}
+        </div>
       </Poster>
 
-      <section className="deck">
-        <div className="actions">
-          <button className="btn ghost" onClick={talkOnce} disabled={!canListen || a.demo || a.busy === "thinking"}><Icon name="chat" size={18} /> Talk to me</button>
-          <button className="btn ghost" onClick={briefMe} disabled={a.busy === "thinking"}><Icon name="sound" size={18} /> Brief me</button>
-          {canCaptureScreen && (
-            <button className="btn ghost" aria-pressed={a.watching} onClick={() => (a.watching ? stopWatching() : startWatching())}>
-              <Icon name="screen" size={18} /> {a.watching ? "Stop watching" : "Watch my screen"}
-            </button>
-          )}
-          {a.busy === "speaking" && canSpeak && <button className="btn" onClick={hush}><Icon name="stop" size={16} /> Quiet</button>}
-        </div>
-        {a.error && <p className="err" role="alert">{a.error}</p>}
-      </section>
+      <div className="dial" role="group" aria-label="Actions">
+        <DialBtn icon="chat" label="Talk" onClick={talkOnce} disabled={!canListen || a.demo || a.busy === "thinking"} />
+        <DialBtn icon="sound" label="Brief me" onClick={briefMe} disabled={a.busy === "thinking"} />
+        {canCaptureScreen && <DialBtn icon="screen" label={a.watching ? "Stop" : "Screen"} pressed={a.watching} onClick={() => (a.watching ? stopWatching() : startWatching())} />}
+        {a.busy === "speaking" && canSpeak && <DialBtn icon="stop" label="Quiet" onClick={hush} />}
+        {canListen && !a.listening && <DialBtn icon="spark" label="Demo" onClick={playDemo} />}
+      </div>
+      {a.error && <p className="err" role="alert">{a.error}</p>}
 
-      {!canListen && <p className="muted small center">This test page can't use your microphone or screen, so the demo plays a short meeting through the same steps: Co-Pilot hears it, writes down who promised what, then answers “who owes me what?” out loud.</p>}
-
-      <section className="feed-wrap">
-        <div className="card-head"><h2>Picked up</h2>{canListen && !a.listening && <button className="link" onClick={playDemo}>Play a demo</button>}</div>
+      <section className="feed-wrap" aria-label="Picked up">
         {a.feed.length ? (
           <ol className="feed">
             {a.feed.slice(0, 60).map(f => (
               <li key={f.id} className={"feed-item k-" + f.kind}>
-                <span className="feed-icon"><Icon name={KIND[f.kind].icon} size={16} /></span>
+                <span className="feed-icon" title={KIND[f.kind].label}><Icon name={KIND[f.kind].icon} size={18} /></span>
                 <div className="feed-body">
-                  <span className="feed-meta">{KIND[f.kind].label}{f.via ? ` · ${f.via === "screen" ? "on screen" : "heard"}` : ""} · {clock(f.at)}</span>
-                  {f.kind === "draft" ? <>{f.who && <span className="feed-text">To {f.who}</span>}<CopyBox text={f.text} /></> : <span className="feed-text">{f.text}</span>}
+                  {f.kind === "draft" ? <>{f.who && <span className="feed-who"><Icon name="send" size={13} /> <Avatar name={f.who} size={22} /> {f.who}</span>}<CopyBox text={f.text} /></> : <span className="feed-text">{f.text}</span>}
                 </div>
+                <span className="feed-time">{f.via === "screen" && <Icon name="eye" size={12} />}{clock(f.at)}</span>
               </li>
             ))}
           </ol>
-        ) : <p className="muted">Nothing yet. What I hear and see shows up here as it happens.</p>}
+        ) : (
+          <div className="howto" aria-label="How it works">
+            <span><b className="p-cobalt"><Icon name="mic" size={26} /></b>Hear</span>
+            <Icon name="arrow" size={18} />
+            <span><b className="p-lime"><Icon name="check" size={26} /></b>Track</span>
+            <Icon name="arrow" size={18} />
+            <span><b className="p-saffron"><Icon name="sound" size={26} /></b>Brief</span>
+          </div>
+        )}
       </section>
 
-      {(a.listening || a.watching) && <p className="consent"><Icon name="alert" size={14} /> Let people know: “{CONSENT_LINE}”</p>}
+      {(a.listening || a.watching) && <p className="consent"><Icon name="alert" size={14} /> “{CONSENT_LINE}”</p>}
     </div>
+  );
+}
+
+function DialBtn({ icon, label, onClick, disabled, pressed }: { icon: IconName; label: string; onClick: () => void; disabled?: boolean; pressed?: boolean }) {
+  return (
+    <button className="dial-btn" onClick={onClick} disabled={disabled} aria-pressed={pressed}>
+      <span className="dial-ic"><Icon name={icon} size={22} /></span>{label}
+    </button>
   );
 }
