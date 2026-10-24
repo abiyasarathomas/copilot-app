@@ -4,6 +4,7 @@ import { Icon, type IconName } from "./icons";
 import { enableReminders, isNative, syncReminders, webNotify } from "./native";
 import { settings as voice, stopListening } from "./assistant";
 import { Live } from "./screens/Live";
+import { LangSwitch } from "./screens/LangSwitch";
 import { CaptureFlow } from "./screens/CaptureFlow";
 import { Notes } from "./screens/Notes";
 import { Today } from "./screens/Today";
@@ -81,6 +82,11 @@ function Settings({ onClose }: { onClose: () => void }) {
   return (
     <Sheet title="Settings" onClose={onClose}>
       <div className="settings">
+        <section>
+          <h4>Language</h4>
+          <p className="muted small">What Co-Pilot listens for, speaks, and writes your promises in.</p>
+          <LangSwitch note />
+        </section>
         <section>
           <h4>Voice</h4>
           <label className="toggle-row"><input type="checkbox" checked={speakOn} onChange={e => { setSpeakOn(e.target.checked); voice.speakReplies = e.target.checked; }} /> Answer out loud when I type a question</label>

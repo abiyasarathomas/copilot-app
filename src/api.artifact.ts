@@ -2,8 +2,9 @@
 // artifact's built-in `sample` capability, so no server or API key is needed.
 // Swapped in for ./api.ts by `npm run build:test` (see vite.config.ts).
 import type Anthropic from "@anthropic-ai/sdk";
-import { briefPrompt, CHAT_SYSTEM, dayPrompt, draftPrompt, prioritizePrompt, TOOL_DEFS } from "../shared/prompts";
+import { briefPrompt, CHAT_SYSTEM, dayPrompt, draftPrompt, langLine, prioritizePrompt, TOOL_DEFS } from "../shared/prompts";
 import type { BriefInput, BriefResult, DraftInput, Image } from "./api";
+import { language } from "./lang";
 import { runTool, type Log } from "./tools";
 
 export type { BriefInput, BriefResult, DraftInput, Image } from "./api";
@@ -36,7 +37,7 @@ const BRIEF_SHAPE = `Return ONLY JSON: {"title": string, "summary": string, "dec
 
 export const api = {
   brief: (b: BriefInput) => ask(async s => {
-    const r = await s.json<Partial<BriefResult>>(briefPrompt({ ...b, imageCount: b.images.length }) + "\n\n" + BRIEF_SHAPE,
+    const r = await s.json<Partial<BriefResult>>(briefPrompt({ ...b, imageCount: b.images.length, lang: language.get() }) + "\n\n" + BRIEF_SHAPE,
       { modelTier: "default", ...(b.images.length ? { images: b.images.map(toBlob) } : {}) });
     return {
       title: String(r.title || b.source), summary: String(r.summary || ""),
@@ -47,8 +48,8 @@ export const api = {
     };
   }),
   day: (b: { now: string; recent: unknown[]; todos: unknown[]; gaps: unknown[] }) =>
-    ask(async s => (await s(dayPrompt(b), { modelTier: "default", cache: false })).text.trim()),
-  draft: (b: DraftInput) => ask(async s => (await s(draftPrompt(b), { modelTier: "default", cache: false })).text.trim()),
+    ask(async s => (await s(dayPrompt({ ...b, lang: language.get() }), { modelTier: "default", cache: false })).text.trim()),
+  draft: (b: DraftInput) => ask(async s => (await s(draftPrompt({ ...b, lang: language.get() }), { modelTier: "default", cache: false })).text.trim()),
   prioritize: (b: { now: string; items: { key: string; [k: string]: unknown }[] }) =>
     ask(async s => {
       const r = await s.json<{ order?: { key: string; why: string }[] }>(prioritizePrompt(b) + '\nReturn ONLY JSON: {"order":[{"key": string, "why": string}]}', { modelTier: "default" });
@@ -62,7 +63,7 @@ export const api = {
           : (m.content ?? []).flatMap(c => (c.type === "text" ? [c.text] : [])).join("");
         return text ? [{ role: m.role, content: text }] : [];
       });
-      turns[0] = { ...turns[0], content: `${CHAT_SYSTEM}\nNow: ${b.now}.\n\nUser: ${turns[0].content}` };
+      turns[0] = { ...turns[0], content: `${CHAT_SYSTEM}${langLine(language.get())}\nNow: ${b.now}.\n\nUser: ${turns[0].content}` };
       const tools = TOOL_DEFS.map(t => ({ name: t.name, description: t.description, inputSchema: t.input_schema,
         execute: (i: Record<string, unknown>) => runTool(t.name, i, log) }));
       const r = await s(turns, { tools, modelTier: "default", cache: false });

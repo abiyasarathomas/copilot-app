@@ -1,6 +1,15 @@
 // Prompts and tool definitions shared by the server and the in-Claude test build.
 
-export function briefPrompt(i: { text: string; source: string; today: string; existingGroups: string[]; imageCount: number; existingTasks?: string[]; live?: boolean }) {
+type Lang = "en" | "ml" | undefined;
+/** Added to every prompt when the user talks to Co-Pilot in Malayalam. */
+export function langLine(lang: Lang, what: "write" | "speak" = "speak") {
+  if (lang !== "ml") return "";
+  return what === "write"
+    ? `\nThe user works in Malayalam. The notes may be Malayalam, English, or a mix (including Malayalam typed in English letters). Write the title, summary, decisions, tasks, gaps and asks in natural Malayalam script, keeping names, numbers and English work terms (budget, review, deadline) as people say them. Keep each quote in the exact words that were said.`
+    : `\nReply in natural, spoken Malayalam (Malayalam script), the way a colleague in Kerala talks. Keep names, numbers and common English work terms as people say them. Dates and times in words.`;
+}
+
+export function briefPrompt(i: { text: string; source: string; today: string; existingGroups: string[]; imageCount: number; existingTasks?: string[]; live?: boolean; lang?: Lang }) {
   const shots = i.imageCount
     ? `\n${i.imageCount} screenshot(s) of the user's screen are attached. Read what they're working on (open documents, tickets, chats, calendar, email) and pull out tasks, deadlines and anything left unanswered.`
     : "";
@@ -9,26 +18,26 @@ Source type: ${i.source}.${shots}
 Turn the notes below into a structured brief: a short title (max 8 words), a 1-2 sentence summary, decisions, people mentioned, commitments (to-dos) and gaps.
 Only these four kinds matter: commitments, decisions, open questions and missing pieces. A commitment is a promise someone made or was given ("I'll send it", "Sam will draft it", "can you book a room?" when someone agreed). Include commitments for everyone, not just me.
 For each commitment: owner is who has to do it ("me", a person's name, or null if nobody took it); to is who it is owed to ("me", a person, team or company name, or null); quote is the short exact words it came from (max 20 words, null for screenshots). Resolve relative dates ("Friday", "next week") against today as YYYY-MM-DD, else null. Group is a short topic/project label; reuse one of these when it fits: ${JSON.stringify(i.existingGroups)}. Gaps are open questions and missing pieces (a commitment with no owner, no date or no clear next step, an unanswered question, an unconfirmed dependency), each with one concrete ask to close it. Be thorough with gaps.${i.live ? `
-This is one part of a live session that Co-Pilot is ${i.imageCount ? "watching on the user's screen" : "hearing as it happens"}, so it may be partial, messy speech-to-text or start mid-sentence. Only pick up real work items; ignore small talk. Do not repeat anything already known: ${JSON.stringify((i.existingTasks ?? []).slice(0, 80))}. Empty lists are fine.` : ""}
+This is one part of a live session that Co-Pilot is ${i.imageCount ? "watching on the user's screen" : "hearing as it happens"}, so it may be partial, messy speech-to-text or start mid-sentence. Only pick up real work items; ignore small talk. Do not repeat anything already known: ${JSON.stringify((i.existingTasks ?? []).slice(0, 80))}. Empty lists are fine.` : ""}${langLine(i.lang, "write")}
 
 NOTES:
 """${i.text || "(no text, use the screenshots)"}"""`;
 }
 
-export function dayPrompt(i: { now: string; recent: unknown[]; todos: unknown[]; gaps: unknown[] }) {
+export function dayPrompt(i: { now: string; recent: unknown[]; todos: unknown[]; gaps: unknown[]; lang?: Lang }) {
   return `You are Co-Pilot, the user's promise keeper. Now: ${i.now}. Write the user's spoken morning brief. It is read aloud and must take under 60 seconds: at most 140 words, plain sentences, no lists, no markdown, no symbols.
 Order: one line on the day; what I owe that is overdue or due today, naming who it is for; who owes me what, naming each person, with anything late first; the one missing piece that matters most and its ask; end with the single first move. Skip any part that has nothing in it. In the to-dos, owner "me" or null means I owe it; any other owner means they owe it, usually to me.
 Recent captures: ${JSON.stringify(i.recent)}
 Open commitments: ${JSON.stringify(i.todos)}
-Open gaps: ${JSON.stringify(i.gaps)}`;
+Open gaps: ${JSON.stringify(i.gaps)}${langLine(i.lang)}`;
 }
 
-export function draftPrompt(i: { now: string; person: string; direction: "owe" | "owed"; items: unknown[] }) {
+export function draftPrompt(i: { now: string; person: string; direction: "owe" | "owed"; items: unknown[]; lang?: Lang }) {
   return `You are Co-Pilot. Now: ${i.now}. Draft a short follow-up message from the user to ${i.person}, ready to paste into chat or email. ${i.direction === "owed"
     ? `${i.person} promised these to the user. Nudge politely and ask for a date where none was given.`
     : `The user promised these to ${i.person}. Give a short status update and a realistic next date, leaving [brackets] where only the user knows the answer.`}
 Friendly, direct, under 80 words, no subject line, no sign-off name. Mention each item once. Return only the message.
-Items: ${JSON.stringify(i.items)}`;
+Items: ${JSON.stringify(i.items)}${i.lang === "ml" ? "\nWrite the message in natural Malayalam script, as people text colleagues in Kerala; keep names and English work terms as they are." : ""}`;
 }
 
 export function prioritizePrompt(i: { now: string; items: unknown[] }) {

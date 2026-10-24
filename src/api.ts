@@ -1,6 +1,7 @@
 // Calls to our own server, which talks to Claude. On the web the server is the
 // same site; the phone apps need VITE_API_BASE set to the deployed address.
 import type Anthropic from "@anthropic-ai/sdk";
+import { language } from "./lang";
 import type { Log } from "./tools";
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ?? "";
@@ -16,7 +17,8 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     res = await fetch(`${BASE}/api/${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Copilot-Code": accessCode.get() },
-      body: JSON.stringify(body),
+      // Every request says which language the user talks in.
+      body: JSON.stringify({ ...(body as object), lang: language.get() }),
     });
   } catch {
     throw new Error("Can't reach the Co-Pilot server. Check your connection.");

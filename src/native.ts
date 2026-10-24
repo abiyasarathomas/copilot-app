@@ -5,18 +5,19 @@ import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
+import { speechLang } from "./lang";
 import type { TodoRef } from "./types";
 
 export const isNative = Capacitor.isNativePlatform();
 // The in-Claude test build runs in a frame that blocks the mic and screen sharing.
 const inArtifact = import.meta.env.MODE === "artifact";
-const lang = navigator.language || "en-US";
 
 /* ---------- speaking replies ---------- */
 export const canSpeak = isNative || "speechSynthesis" in window;
 
 export async function speak(text: string, onEnd?: () => void) {
   stopSpeaking();
+  const lang = speechLang();
   if (isNative) {
     await TextToSpeech.speak({ text, lang, rate: 1.0 }).catch(() => {});
     onEnd?.();
@@ -25,8 +26,10 @@ export async function speak(text: string, onEnd?: () => void) {
   if (!("speechSynthesis" in window)) return onEnd?.();
   const u = new SpeechSynthesisUtterance(text);
   const voices = speechSynthesis.getVoices();
-  u.voice = voices.find(v => v.lang === lang && /natural|neural|premium|enhanced|google|samantha|aria|jenny/i.test(v.name))
-    || voices.find(v => v.lang === lang) || null;
+  const base = lang.split("-")[0];
+  const fits = (v: SpeechSynthesisVoice) => v.lang === lang || v.lang.replace("_", "-").split("-")[0] === base;
+  u.voice = voices.find(v => fits(v) && /natural|neural|premium|enhanced|google|samantha|aria|jenny/i.test(v.name))
+    || voices.find(fits) || null;
   u.lang = lang;
   u.onend = u.onerror = () => onEnd?.();
   speechSynthesis.speak(u);
@@ -35,6 +38,13 @@ export async function speak(text: string, onEnd?: () => void) {
 export function stopSpeaking() {
   if (isNative) TextToSpeech.stop().catch(() => {});
   else if ("speechSynthesis" in window) speechSynthesis.cancel();
+}
+
+/** Whether this device has a voice for the chosen language (web only; phones assume yes). */
+export function hasVoiceFor(tag: string) {
+  if (isNative || !("speechSynthesis" in window)) return true;
+  const base = tag.split("-")[0];
+  return speechSynthesis.getVoices().some(v => v.lang.replace("_", "-").split("-")[0] === base);
 }
 
 /* ---------- listening (mic) ---------- */
@@ -53,13 +63,13 @@ export async function listen(onText: (t: string) => void, opts: { continuous?: b
     let last = "";
     await SpeechRecognition.removeAllListeners();
     await SpeechRecognition.addListener("partialResults", d => { last = d.matches?.[0] ?? last; onText(last); });
-    const done = SpeechRecognition.start({ language: lang, partialResults: true, popup: false })
+    const done = SpeechRecognition.start({ language: speechLang(), partialResults: true, popup: false })
       .then(r => r.matches?.[0] ?? last).catch(() => last);
     return { stop: () => { SpeechRecognition.stop().catch(() => {}); }, done };
   }
   if (!WebSpeech) throw new Error("This browser can't listen. Try Chrome, Edge or Safari.");
   const rec = new WebSpeech();
-  rec.lang = lang; rec.interimResults = true; rec.continuous = !!opts.continuous;
+  rec.lang = speechLang(); rec.interimResults = true; rec.continuous = !!opts.continuous;
   let text = "";
   const done = new Promise<string>((resolve, reject) => {
     rec.onresult = e => { text = Array.from(e.results).map(r => r[0].transcript).join(" "); onText(text); };
@@ -79,7 +89,7 @@ export function startEar(onFinal: (t: string) => void, onInterim: (t: string) =>
       const perm = await SpeechRecognition.requestPermissions();
       if (perm.speechRecognition !== "granted") { onError("Microphone permission was not given."); return; }
       while (active) {
-        const r = await SpeechRecognition.start({ language: lang, partialResults: false, popup: false }).catch(() => ({ matches: [] as string[] }));
+        const r = await SpeechRecognition.start({ language: speechLang(), partialResults: false, popup: false }).catch(() => ({ matches: [] as string[] }));
         const t = r.matches?.[0]?.trim();
         if (active && t) onFinal(t);
       }
@@ -90,7 +100,7 @@ export function startEar(onFinal: (t: string) => void, onInterim: (t: string) =>
   let rec: InstanceType<WebSR> | null = null;
   const boot = () => {
     rec = new WebSpeech();
-    rec.lang = lang; rec.interimResults = true; rec.continuous = true;
+    rec.lang = speechLang(); rec.interimResults = true; rec.continuous = true;
     rec.onresult = e => {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {

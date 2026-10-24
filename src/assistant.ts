@@ -7,7 +7,10 @@ import { read, write } from "./format";
 import { canListen, listen, speak, startEar, stopSpeaking, watchScreen } from "./native";
 import { allGaps, allTodos, counterpart, flags, newId, samePerson, sideOf, store, todayISO } from "./store";
 import { runTool, type Input, type Log } from "./tools";
+import { language } from "./lang";
 import type { Todo } from "./types";
+
+const ml = () => language.get() === "ml";
 
 export type FeedKind = "todo" | "gap" | "decision" | "you" | "copilot" | "info" | "draft";
 export type FeedItem = { id: string; at: string; kind: FeedKind; text: string; via?: "heard" | "screen"; who?: string };
@@ -44,7 +47,11 @@ export const settings = {
   get consent() { return read("copilot.consent", true); },
   set consent(v: boolean) { write("copilot.consent", v); },
 };
-export const CONSENT_LINE = "Quick note: I'm Co-Pilot, taking notes of what's agreed. No audio is saved.";
+const CONSENT = {
+  en: "Quick note: I'm Co-Pilot, taking notes of what's agreed. No audio is saved.",
+  ml: "ഒരു കാര്യം: ഞാൻ കോ-പൈലറ്റ് ആണ്, ഇവിടെ തീരുമാനിക്കുന്ന കാര്യങ്ങൾ കുറിച്ചെടുക്കുന്നു. ശബ്ദം സൂക്ഷിക്കുന്നില്ല.",
+};
+export const consentLine = () => CONSENT[language.get()];
 
 const feed = (kind: FeedKind, text: string, via?: FeedItem["via"], who?: string) =>
   set({ feed: [{ id: newId("f"), at: new Date().toISOString(), kind, text, via, who }, ...state.feed].slice(0, 200) });
@@ -100,7 +107,7 @@ async function extract(text: string, via: "heard" | "screen", images: Image[] = 
   todos.forEach(t => feed("todo", promiseLine(t), via));
   if (settings.announce) {
     const n = todos.length + gaps.length;
-    if (n) say(`Picked up ${n} thing${n > 1 ? "s" : ""}. ${todos[0]?.task ?? gaps[0]?.issue}.`);
+    if (n) say(ml() ? `${n} കാര്യം കുറിച്ചെടുത്തു. ${todos[0]?.task ?? gaps[0]?.issue}.` : `Picked up ${n} thing${n > 1 ? "s" : ""}. ${todos[0]?.task ?? gaps[0]?.issue}.`);
   }
 }
 
@@ -118,7 +125,8 @@ function flush(force = false) {
   return extract(text, "heard");
 }
 
-const WAKE = /\bco[\s-]?pilot\b[\s,.!?:]*(.*)$/i;
+// "Co-Pilot" as English speech recognition writes it, or as Malayalam recognition does.
+const WAKE = /(?:\bco[\s-]?pilot\b|കോ[\s-]?(?:പ്)?പൈല[^\s,.!?:]*)[\s,.!?:]*(.*)$/iu;
 // A question first picks up whatever was just said, so the answer includes it.
 const answer = (q: string) => Promise.resolve(flush(true)).then(() => askCopilot(q, true));
 function hearSentence(t: string) {
@@ -146,7 +154,7 @@ export function startListening() {
   sessionId = null; chunk = ""; lastFlush = Date.now();
   set({ listening: true, listeningSince: new Date().toISOString(), error: "", caption: "" });
   // Consent first: say who is taking notes before hearing anyone.
-  if (settings.consent) say(CONSENT_LINE).then(() => { if (state.listening && !stopEar) bootEar(); });
+  if (settings.consent) say(consentLine()).then(() => { if (state.listening && !stopEar) bootEar(); });
   else bootEar();
   flushTimer = setInterval(() => flush(), 15000);
 }
@@ -218,7 +226,7 @@ export async function talkOnce() {
 export async function briefMe() {
   const caps = store.get();
   const open = allTodos(caps).filter(t => !t.done), gaps = allGaps(caps).filter(g => !g.done);
-  if (!open.length && !gaps.length) { const t = "Nothing open yet. Turn on listening during your next meeting and I'll pick things up."; feed("copilot", t); await say(t); return; }
+  if (!open.length && !gaps.length) { const t = ml() ? "ഇപ്പോൾ ഒന്നും ബാക്കിയില്ല. അടുത്ത മീറ്റിംഗിൽ കേൾക്കാൻ തുടങ്ങിയാൽ ഞാൻ കാര്യങ്ങൾ കുറിച്ചെടുക്കാം." : "Nothing open yet. Turn on listening during your next meeting and I'll pick things up."; feed("copilot", t); await say(t); return; }
   hush(); set({ busy: "thinking" });
   try {
     const text = await api.day({
@@ -235,6 +243,8 @@ export async function briefMe() {
 
 /** Before meeting someone: what you owe them and what they owe you, read out. No AI needed. */
 export async function briefPerson(name: string) {
+  // In Malayalam, Claude says it naturally instead of a fixed English sentence.
+  if (ml()) return askCopilot(`${name}-നെ ഉടനെ കാണുന്നുണ്ട്. ഞാൻ ${name}-ന് എന്തൊക്കെ കൊടുക്കാനുണ്ട്, ${name} എനിക്ക് എന്തൊക്കെ തരാനുണ്ട്?`, true);
   const open = allTodos(store.get()).filter(t => !t.done && samePerson(counterpart(t), name));
   const owe = open.filter(t => sideOf(t) === "owe"), owed = open.filter(t => sideOf(t) === "owed");
   const list = (ts: Todo[]) => ts.map(t => t.task + (t.due ? `, due ${new Date(t.due + "T00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}` : ", no date yet")).join("; ");
@@ -258,12 +268,23 @@ const DEMO = [
   "Also, do we still need legal sign-off for the pilot? Nobody knows.",
   "Co-Pilot, who owes me what?",
 ];
+const DEMO_ML = [
+  "ശരി, എല്ലാവരും വന്നല്ലോ, ചൊവ്വാഴ്ചത്തെ മീറ്റിംഗ് തുടങ്ങാം.",
+  "പ്രിയ ആണ്, Q4 ബജറ്റ് അപ്രൂവ് ആയി, പക്ഷേ ഫിനാൻസിന് പുതിയ ഷീറ്റ് വെള്ളിയാഴ്ചയ്ക്കുള്ളിൽ വേണം.",
+  "അത് ഞാൻ വെള്ളിയാഴ്ചയ്ക്കുള്ളിൽ ഫിനാൻസിന് അയച്ചുകൊടുക്കാം.",
+  "സാം, വെണ്ടർ ഷോർട്ട്‌ലിസ്റ്റ് ഒന്ന് തയ്യാറാക്കാമോ?",
+  "ശരി, ഞാൻ ചെയ്യാം, പക്ഷേ എപ്പോഴാണെന്ന് ഉറപ്പില്ല.",
+  "ലോഞ്ച് റിവ്യൂ അടുത്ത ആഴ്ചയിലേക്ക് മാറ്റാൻ തീരുമാനിച്ചു.",
+  "അതിന് ആരെങ്കിലും ഒരു റൂം ബുക്ക് ചെയ്യണം.",
+  "പൈലറ്റിന് ലീഗൽ സൈൻ-ഓഫ് വേണോ? ആർക്കും അറിയില്ല.",
+  "കോ-പൈലറ്റ്, ആരാണ് എനിക്ക് എന്തൊക്കെ തരാനുള്ളത്?",
+];
 export async function playDemo() {
   if (state.demo || state.listening) return;
   sessionId = null; chunk = ""; lastFlush = Date.now();
   set({ demo: true, listening: true, listeningSince: new Date().toISOString(), error: "" });
-  if (settings.consent) { feed("copilot", CONSENT_LINE); await say(CONSENT_LINE); }
-  for (const line of DEMO) {
+  if (settings.consent) { feed("copilot", consentLine()); await say(consentLine()); }
+  for (const line of ml() ? DEMO_ML : DEMO) {
     for (let i = 1; i <= line.length; i += 3) { set({ caption: line.slice(0, i) }); await new Promise(r => setTimeout(r, 35)); }
     set({ caption: "" });
     hearSentence(line);

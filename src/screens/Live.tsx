@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { briefMe, CONSENT_LINE, hush, playDemo, startListening, startWatching, stopListening, stopWatching, talkOnce, useAssistant, type FeedItem } from "../assistant";
+import { briefMe, consentLine, hush, playDemo, startListening, startWatching, stopListening, stopWatching, talkOnce, useAssistant, type FeedItem } from "../assistant";
 import { Icon, type IconName } from "../icons";
 import { canCaptureScreen, canListen, canSpeak } from "../native";
 import { CopyBox } from "../ui";
 import { Poster } from "../poster";
+import { LangSwitch } from "./LangSwitch";
 
 const KIND: Record<FeedItem["kind"], { icon: IconName; label: string }> = {
   todo: { icon: "check", label: "Promise" },
@@ -44,6 +45,7 @@ export function Live() {
       </Poster>
 
       <section className="deck">
+        <LangSwitch note />
         <div className="actions">
           <button className="btn ghost" onClick={talkOnce} disabled={!canListen || a.demo || a.busy === "thinking"}><Icon name="chat" size={18} /> Talk to me</button>
           <button className="btn ghost" onClick={briefMe} disabled={a.busy === "thinking"}><Icon name="sound" size={18} /> Brief me</button>
@@ -76,7 +78,7 @@ export function Live() {
         ) : <p className="muted">Nothing yet. What I hear and see shows up here as it happens.</p>}
       </section>
 
-      {(a.listening || a.watching) && <p className="consent"><Icon name="alert" size={14} /> Let people know: “{CONSENT_LINE}”</p>}
+      {(a.listening || a.watching) && <p className="consent"><Icon name="alert" size={14} /> Let people know: “{consentLine()}”</p>}
     </div>
   );
 }

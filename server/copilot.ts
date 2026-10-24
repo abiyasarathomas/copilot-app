@@ -2,7 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
-import { briefPrompt, CHAT_SYSTEM, dayPrompt, draftPrompt, prioritizePrompt, TOOL_DEFS } from "../shared/prompts.js";
+import { briefPrompt, CHAT_SYSTEM, dayPrompt, draftPrompt, langLine, prioritizePrompt, TOOL_DEFS } from "../shared/prompts.js";
 
 const client = new Anthropic(); // reads ANTHROPIC_API_KEY from the environment
 const MODEL = "claude-opus-5-5";
@@ -17,6 +17,9 @@ export class CopilotError extends Error {
 function refused(stop: string | null) {
   if (stop === "refusal") throw new CopilotError(422, "Claude declined this request.");
 }
+
+/** "ml" when the user talks to Co-Pilot in Malayalam. */
+const Lang = z.enum(["en", "ml"]).optional();
 
 /* ---------- capture -> structured brief ---------- */
 const Brief = z.object({
@@ -44,6 +47,7 @@ export const BriefInput = z.object({
   existingGroups: z.array(z.string()).max(50),
   existingTasks: z.array(z.string()).max(200).optional(),
   live: z.boolean().optional(),
+  lang: Lang,
   images: z.array(z.object({
     media_type: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
     data: z.string(),
@@ -77,6 +81,7 @@ export const DayInput = z.object({
   recent: z.array(z.unknown()).max(20),
   todos: z.array(z.unknown()).max(300),
   gaps: z.array(z.unknown()).max(300),
+  lang: Lang,
 });
 
 export async function day(input: z.infer<typeof DayInput>): Promise<string> {
@@ -100,6 +105,7 @@ export const DraftInput = z.object({
   person: z.string().max(100),
   direction: z.enum(["owe", "owed"]),
   items: z.array(z.unknown()).min(1).max(30),
+  lang: Lang,
 });
 
 export async function draft(input: z.infer<typeof DraftInput>): Promise<string> {
@@ -146,6 +152,7 @@ export const ChatInput = z.object({
   now: z.string(),
   // The full conversation, including Claude's earlier replies exactly as returned.
   messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.unknown() })).min(1).max(80),
+  lang: Lang,
 });
 
 export async function chat(input: z.infer<typeof ChatInput>) {
@@ -153,7 +160,7 @@ export async function chat(input: z.infer<typeof ChatInput>) {
     model: MODEL,
     max_tokens: 4000,
     output_config: { effort: "low" },
-    system: `${CHAT_SYSTEM}\nNow: ${input.now}.`,
+    system: `${CHAT_SYSTEM}${langLine(input.lang)}\nNow: ${input.now}.`,
     tools: TOOLS,
     messages: input.messages as Anthropic.Beta.BetaMessageParam[],
     ...FALLBACK,

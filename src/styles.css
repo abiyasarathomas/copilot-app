@@ -10,9 +10,9 @@
   --cobalt:#6E93E3; --lime:#A9C95B; --coral:#E3664E; --fog:#C4D2CF; --orchid:#C55CC2; --jade:#58A596; --saffron:#E5B94F;
   --on-poster:#16141A;
   --shadow:0 1px 0 rgba(22,20,26,.08),0 12px 32px rgba(22,20,26,.12);
-  --display:"Inter Tight",ui-sans-serif,system-ui,sans-serif;
-  --body:"Inter Tight",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --display:"Inter Tight","Noto Sans Malayalam",ui-sans-serif,system-ui,sans-serif;
+  --body:"Inter Tight","Noto Sans Malayalam",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"DM Mono","Noto Sans Malayalam",ui-monospace,SFMono-Regular,Menlo,monospace;
   --nav-h:64px; --r:2px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -360,3 +360,10 @@ button.poster:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .segmented button[aria-selected="true"] .n{color:var(--bg)}
 @media (prefers-reduced-motion:reduce){button.poster{transition:none}button.poster:hover{transform:none}}
 .person .pixels.bottom{display:none}
+
+/* ---------- voice language ---------- */
+.lang{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.lang-switch{display:inline-flex;border:2px solid var(--ink)}
+.lang-switch button{min-height:40px;padding:0 16px;border:0;background:transparent;color:var(--ink);font:500 15px var(--body)}
+.lang-switch button[aria-checked="true"]{background:var(--ink);color:var(--bg)}
+:lang(ml){line-height:1.6}
