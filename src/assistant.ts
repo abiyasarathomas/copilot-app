@@ -279,13 +279,19 @@ const DEMO_ML = [
   "പൈലറ്റിന് ലീഗൽ സൈൻ-ഓഫ് വേണോ? ആർക്കും അറിയില്ല.",
   "കോ-പൈലറ്റ്, ആരാണ് എനിക്ക് എന്തൊക്കെ തരാനുള്ളത്?",
 ];
+let demoStop = false;
+/** Ends the demo early; the loop below checks this between sentences. */
+export function stopDemo() { demoStop = true; hush(); set({ caption: "" }); }
 export async function playDemo() {
   if (state.demo || state.listening) return;
+  demoStop = false;
   sessionId = null; chunk = ""; lastFlush = Date.now();
   set({ demo: true, listening: true, listeningSince: new Date().toISOString(), error: "" });
   if (settings.consent) { feed("copilot", consentLine()); await say(consentLine()); }
   for (const line of ml() ? DEMO_ML : DEMO) {
-    for (let i = 1; i <= line.length; i += 3) { set({ caption: line.slice(0, i) }); await new Promise(r => setTimeout(r, 35)); }
+    if (demoStop) break;
+    for (let i = 1; i <= line.length && !demoStop; i += 3) { set({ caption: line.slice(0, i) }); await new Promise(r => setTimeout(r, 35)); }
+    if (demoStop) break;
     set({ caption: "" });
     hearSentence(line);
     await new Promise(r => setTimeout(r, 400));

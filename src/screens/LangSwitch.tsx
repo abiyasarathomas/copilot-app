@@ -13,7 +13,7 @@ export function LangSwitch({ note = false }: { note?: boolean }) {
         ))}
       </div>
       {note && lang === "ml" && canSpeak && !hasVoiceFor(speechLang()) && (
-        <p className="muted small">This device has no Malayalam voice yet, so replies may be read in another voice. Add one in your device's text-to-speech settings (on Android: Google Text-to-speech → Malayalam).</p>
+        <p className="muted small">No Malayalam voice on this device yet. Add one in your text-to-speech settings (Android: Google Text-to-speech → Malayalam).</p>
       )}
     </div>
   );

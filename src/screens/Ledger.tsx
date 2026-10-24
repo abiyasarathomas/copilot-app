@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { briefPerson, useAssistant } from "../assistant";
 import { fmtDue, whenBucket } from "../format";
-import { colorFor, Poster } from "../poster";
+import { colorFor } from "../poster";
 import { Icon } from "../icons";
 import { allGaps, allTodos, counterpart, flags, sideOf, store, useCaptures, type Side } from "../store";
 import type { TodoRef } from "../types";
 import { CopyBox, Empty, GapCard, Sheet, TodoRow, toast } from "../ui";
+import { Avatar, Flow, Ring } from "../visual";
 
 type Tab = Side | "missing";
-const NOBODY = "Nobody named";
+const NOBODY = "Unassigned";
 
 // The promise ledger: what you owe people, what they owe you, grouped by person.
 // `initial` comes from tapping a number on the Briefing screen.
@@ -44,26 +45,26 @@ export function Ledger({ initial, listen }: { initial?: string; listen: () => vo
   };
 
   return (
-    <div className="page">
-      <div className="page-head"><p className="eyebrow">Promise ledger</p><h1>Promises</h1></div>
+    <div className="page wide">
+      <div className="page-head"><p className="eyebrow">Who owes whom</p><h1>Promises</h1></div>
 
       <div className="segmented" role="tablist" aria-label="Show">
-        <button role="tab" aria-selected={tab === "owe"} onClick={() => setTab("owe")}>I owe <span className="n">{count.owe}</span></button>
-        <button role="tab" aria-selected={tab === "owed"} onClick={() => setTab("owed")}>Owed to me <span className="n">{count.owed}</span></button>
-        <button role="tab" aria-selected={tab === "missing"} onClick={() => setTab("missing")}>Missing <span className="n">{count.missing}</span></button>
+        <button role="tab" aria-selected={tab === "owe"} onClick={() => setTab("owe")}><Icon name="out" size={16} /> I owe <span className="n">{count.owe}</span></button>
+        <button role="tab" aria-selected={tab === "owed"} onClick={() => setTab("owed")}><Icon name="in" size={16} /> Owed <span className="n">{count.owed}</span></button>
+        <button role="tab" aria-selected={tab === "missing"} onClick={() => setTab("missing")}><Icon name="question" size={16} /> Missing <span className="n">{count.missing}</span></button>
       </div>
 
       {tab === "missing" ? (
         count.missing ? <>
           {!!flagged.length && <section className="group">
-            <h3>Promises missing a piece <span className="count">{flagged.length}</span></h3>
+            <h3 className="h-ic"><Icon name="alert" size={15} /> Incomplete <span className="count">{flagged.length}</span></h3>
             <div className="todo-list card flush">{flagged.map(t => <TodoRow key={t.cid + t.id} t={t} />)}</div>
           </section>}
           {!!gaps.length && <section className="group">
-            <h3>Open questions <span className="count">{gaps.length}</span></h3>
+            <h3 className="h-ic"><Icon name="question" size={15} /> Open questions <span className="count">{gaps.length}</span></h3>
             <ul className="gaps">{gaps.map(g => <GapCard key={g.cid + g.id} g={g} />)}</ul>
           </section>}
-        </> : <Empty icon="check" title="Nothing missing">Promises with no owner, no date or nobody they're for, and open questions, land here.</Empty>
+        </> : <Empty icon="check" title="Nothing missing" />
       ) : (
         <>
           <form className="quick-add two" onSubmit={add}>
@@ -74,32 +75,39 @@ export function Ledger({ initial, listen }: { initial?: string; listen: () => vo
             <button className="icon-btn filled" aria-label="Add promise" disabled={!task.trim()}><Icon name="plus" /></button>
           </form>
 
-          {names.length ? names.map((n, i) => {
+          {names.length ? <div className="ledger-grid">{names.map(n => {
             const items = order(groups[n]), live = items.filter(t => !t.done), overdue = late(items);
             const all = todos.filter(t => sideOf(t) === tab && (counterpart(t) ?? NOBODY) === n);
             const next = live.find(t => t.due);
+            const keptShare = all.length ? all.filter(t => t.done).length / all.length : 0;
             return (
-              <section className="person" key={n}>
-                <Poster color={n === NOBODY ? "fog" : colorFor(n)} seed={i + 5} label={n}
-                  kicker={tab === "owe" ? "You owe" : "Owes you"} aside={overdue ? `${overdue} overdue` : next ? `Next due ${fmtDue(next.due!)}` : live.length ? "No dates yet" : "All kept"}
-                  rank={`No.${String(i + 1).padStart(2, "0")}`} title={<h2 className="poster-name">{n}</h2>}
-                  tag={live[0]?.task.toLowerCase() ?? "nothing open"}
-                  figureLabel="Open promises" figure={live.length} bar={all.length ? all.filter(t => t.done).length / all.length : 0}>
+              <section className="person-card" key={n} aria-label={n}>
+                <header className={"pc-head g-" + (n === NOBODY ? "fog" : colorFor(n))}>
+                  {n === NOBODY ? <span className="av ghost" style={{ width: 56, height: 56 }}><Icon name="question" size={24} /></span> : <Avatar name={n} size={56} />}
+                  <div className="pc-name">
+                    <span className="pc-kick"><Icon name={tab === "owe" ? "out" : "in"} size={14} /> {tab === "owe" ? "You owe" : "Owes you"}</span>
+                    <h2>{n}</h2>
+                  </div>
+                  <Ring value={keptShare} size={58} stroke={7} label={`${live.length} open, ${Math.round(keptShare * 100)}% kept`}><b>{live.length}</b></Ring>
+                </header>
+                <div className="pc-bar">
+                  {overdue ? <span className="pill hot"><Icon name="alert" size={13} /> {overdue} late</span>
+                    : next ? <span className="pill"><Icon name="calendar" size={13} /> {fmtDue(next.due!)}</span>
+                    : live.length ? <span className="pill warm"><Icon name="calendar" size={13} /> no date</span>
+                    : <span className="pill ok"><Icon name="check" size={13} /> all kept</span>}
                   {n !== NOBODY && !!live.length && (
-                    <div className="row poster-actions">
-                      <button className="btn primary small" onClick={() => setDraft({ person: n, side: tab, items: live })}><Icon name="send" size={14} /> {tab === "owed" ? `Nudge ${n}` : `Update ${n}`}</button>
-                      <button className="btn ghost small" disabled={a.busy === "speaking"} onClick={() => briefPerson(n)}><Icon name="sound" size={14} /> Before you meet</button>
-                    </div>
+                    <span className="row pc-actions">
+                      <button className="btn small primary" onClick={() => setDraft({ person: n, side: tab, items: live })}><Icon name="send" size={14} /> {tab === "owed" ? "Nudge" : "Update"}</button>
+                      <button className="btn small ghost" disabled={a.busy === "speaking"} onClick={() => briefPerson(n)} aria-label={`Hear what you and ${n} owe each other`}><Icon name="sound" size={14} /> Brief</button>
+                    </span>
                   )}
-                </Poster>
-                <div className="todo-list card flush">{items.map(t => <TodoRow key={t.cid + t.id} t={t} showOwner={false} />)}</div>
+                </div>
+                <div className="todo-list">{items.map(t => <TodoRow key={t.cid + t.id} t={t} showOwner={false} />)}</div>
               </section>
             );
-          }) : <Empty icon="list" title={tab === "owe" ? "You don't owe anyone yet" : "Nobody owes you anything yet"} action={<button className="btn primary" onClick={listen}><Icon name="mic" /> Start listening</button>}>
-            Turn on listening in a meeting. When someone says "I'll send it Friday", it lands here under their name.
-          </Empty>}
+          })}</div> : <Empty icon={tab === "owe" ? "out" : "in"} title={tab === "owe" ? "You owe no one" : "No one owes you"} action={<button className="btn primary" onClick={listen}><Icon name="mic" /> Start listening</button>} />}
 
-          <label className="toggle-row"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show kept promises</label>
+          <label className="toggle-row"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> <Icon name="check" size={14} /> Show kept</label>
         </>
       )}
 
@@ -125,7 +133,7 @@ function DraftSheet({ person, side, items, onClose }: { person: string; side: Si
   return (
     <Sheet title={side === "owed" ? `Nudge ${person}` : `Update ${person}`} onClose={onClose}>
       <div className="draft">
-        <p className="muted small">{side === "owed" ? `${person} promised you ${items.length === 1 ? "one thing" : items.length + " things"}.` : `You promised ${person} ${items.length === 1 ? "one thing" : items.length + " things"}.`} Edit, copy and send it wherever you talk.</p>
+        <div className="draft-head"><Flow from={side === "owed" ? person : "me"} to={side === "owed" ? "me" : person} /><span className="pill"><Icon name="check" size={13} /> {items.length}</span></div>
         {busy && !text ? <p className="muted">Writing a draft…</p> : <CopyBox text={text} onChange={setText} onRewrite={write} busy={busy} />}
         {err && <p className="err" role="alert">{err}</p>}
       </div>

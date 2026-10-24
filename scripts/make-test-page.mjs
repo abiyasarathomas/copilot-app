@@ -5,10 +5,11 @@ const dir = "dist-test/assets";
 const files = fs.readdirSync(dir);
 const css = files.filter(f => f.endsWith(".css")).map(f => fs.readFileSync(`${dir}/${f}`, "utf8")).join("\n");
 const js = files.filter(f => f.endsWith(".js")).map(f => fs.readFileSync(`${dir}/${f}`, "utf8")).join("\n");
-const page = `<title>Co-Pilot</title>
+const page = `<meta charset="utf-8">
+<title>Co-Pilot</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&family=Barlow:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Geist+Mono:wght@400;500;600&display=swap">
 <style>${css}</style>
 <div id="root"></div>
 <script type="module">${js.replace(/<\/script/gi, "<\\/script")}</script>

@@ -57,8 +57,8 @@ export default defineConfig(({ mode }) => {
           name: "Co-Pilot",
           short_name: "Co-Pilot",
           description: "Your work brief: meetings, conversations and to-dos in one place.",
-          theme_color: "#1f6f5c",
-          background_color: "#f6f5f1",
+          theme_color: "#F3F2F8",
+          background_color: "#F3F2F8",
           display: "standalone",
           start_url: "/",
           icons: [

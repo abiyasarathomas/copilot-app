@@ -32,9 +32,14 @@ export function App() {
 
   const go = (t: Tab, view?: string) => {
     setTab(t); setTodosView(view);
-    try { history.replaceState(null, "", "#" + t); } catch { /* sandboxed */ }
+    // pushState so the browser and Android back button step back through tabs.
+    try { if (location.hash !== "#" + t) history.pushState(null, "", "#" + t); } catch { /* sandboxed */ }
     window.scrollTo(0, 0);
   };
+  useEffect(() => {
+    const back = () => { const h = location.hash.slice(1); setTab(isTab(h) ? h : "live"); setTodosView(undefined); };
+    window.addEventListener("popstate", back); return () => window.removeEventListener("popstate", back);
+  }, []);
 
   // Reminders: checked every 30 seconds while open; on phones also handed to the OS.
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
@@ -50,16 +55,21 @@ export function App() {
       <nav className="nav" aria-label="Main">
         <div className="brand"><span className="logo" aria-hidden="true" /> Co-Pilot{isTest && <span className="tag">Test</span>}</div>
         {TABS.map((t, i) => (
-          <button key={t.id} className="tab" style={{ "--o": i + 1 } as React.CSSProperties} aria-current={tab === t.id ? "page" : undefined} onClick={() => go(t.id)}>
+          <button key={t.id} className="tab" style={{ "--o": i < 2 ? i + 1 : i + 2 } as React.CSSProperties} aria-current={tab === t.id ? "page" : undefined} onClick={() => go(t.id)}>
             <Icon name={t.icon} /><span>{t.label}</span>
             {t.id === "live" && due.length > 0 && <span className="badge" aria-label={`${due.length} reminders due`}>{due.length}</span>}
           </button>
         ))}
+        <button className="capture-btn" onClick={() => openCapture()} aria-label="Add notes or a file"><Icon name="plus" /><span>Add notes</span></button>
         <button className="tab settings-tab" onClick={() => setSettings(true)}><Icon name="settings" /><span>Settings</span></button>
       </nav>
 
+      <header className="topbar">
+        <div className="brand"><span className="logo" aria-hidden="true" /> Co-Pilot{isTest && <span className="tag">Test</span>}</div>
+        <button className="icon-btn" onClick={() => setSettings(true)} aria-label="Settings"><Icon name="settings" /></button>
+      </header>
+
       <main className="main">
-        <button className="icon-btn settings-corner" onClick={() => setSettings(true)} aria-label="Settings"><Icon name="settings" /></button>
         {tab === "live" && <Live />}
         {tab === "today" && <Today go={go} capture={openCapture} now={now} />}
         {tab === "todos" && <Ledger initial={todosView} listen={() => go("live")} />}
